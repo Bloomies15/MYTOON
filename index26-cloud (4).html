@@ -1,0 +1,6113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>MYTOON</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
+        type="module"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: #111;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+header {
+    min-height: 65px;
+    background: #181818;
+    border-bottom: 1px solid #292929;
+
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    padding: 10px 25px;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 1000;
+}
+
+.logo {
+    font-size: 23px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.search {
+    flex: 1;
+    max-width: 500px;
+}
+
+.search input {
+    width: 100%;
+    padding: 12px 18px;
+
+    border: none;
+    outline: none;
+    border-radius: 25px;
+
+    background: #292929;
+    color: white;
+}
+
+.search input::placeholder {
+    color: #888;
+}
+
+/* =========================================================
+   LIBRARY CONTROLS
+========================================================= */
+
+.library-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.control-button {
+    height: 42px;
+    min-width: 42px;
+
+    padding: 0 12px;
+
+    border-radius: 8px;
+
+    background: #292929;
+    color: white;
+
+    font-size: 14px;
+    font-weight: bold;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.control-button:hover {
+    background: #3a3a3a;
+}
+
+.control-button.active {
+    background: #fff;
+    color: #111;
+}
+
+.mosaic-button {
+    font-size: 18px;
+}
+
+.mosaic-number {
+    font-size: 13px;
+}
+
+/* =========================================================
+   TAGS
+========================================================= */
+
+.tags-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.tag-filter {
+    background: #292929;
+    color: #aaa;
+
+    border-radius: 20px;
+
+    padding: 7px 13px;
+
+    font-size: 13px;
+}
+
+.tag-filter:hover {
+    background: #383838;
+    color: white;
+}
+
+.tag-filter.active {
+    background: white;
+    color: black;
+}
+
+.collections-bar { display:flex; flex-wrap:wrap; gap:7px; margin:15px 0 20px; }
+.collection-filter,.collection-add { background:#292929; color:#aaa; border-radius:20px; padding:7px 13px; font-size:13px; }
+.collection-filter.active { background:white; color:#111; }
+.collection-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.collection-delete {
+    background: #333;
+    color: #aaa;
+    border: 0;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 14px;
+    line-height: 22px;
+    cursor: pointer;
+}
+.collection-delete:hover {
+    background: #8b2222;
+    color: white;
+}
+.continue-reading { margin:0 0 25px; padding:18px; background:#1b1b1b; border-radius:10px; }
+.continue-item { display:flex; align-items:center; justify-content:space-between; gap:15px; padding:12px 0; border-bottom:1px solid #292929; }
+.continue-item:last-child { border-bottom:0; }
+.continue-info { min-width:0; flex:1; }
+.continue-meta { color:#888; font-size:12px; margin-top:4px; }
+.progress-mini { width:100%; height:4px; background:#292929; border-radius:4px; overflow:hidden; margin-top:7px; }
+.progress-mini > div { height:100%; background:white; }
+.status-badge { display:inline-block; margin-top:7px; padding:3px 8px; border-radius:10px; background:#292929; color:#aaa; font-size:10px; }
+.reader-navigation { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:10px; padding:15px; }
+.reader-mode-button { background:#333; color:white; padding:9px 11px; border-radius:6px; }
+.reader-mode-button.active { background:white; color:#111; }
+.double-page { display:grid !important; grid-template-columns:1fr 1fr; gap:0; align-items:start; max-width:1400px; }
+.double-page img { width:100% !important; max-width:none !important; }
+
+/* =========================================================
+   CONTAINER
+========================================================= */
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+
+    margin: auto;
+    padding: 30px 20px;
+}
+
+/* =========================================================
+   LIBRARY
+========================================================= */
+
+.library {
+    display: grid;
+
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+
+    gap: 20px;
+}
+
+.library.mosaic-6 {
+    grid-template-columns:
+        repeat(6, minmax(0, 1fr));
+}
+
+.library.mosaic-8 {
+    grid-template-columns:
+        repeat(8, minmax(0, 1fr));
+}
+
+.library.mosaic-10 {
+    grid-template-columns:
+        repeat(10, minmax(0, 1fr));
+}
+
+.library.mosaic-12 {
+    grid-template-columns:
+        repeat(12, minmax(0, 1fr));
+}
+
+.card {
+    background: #1c1c1c;
+    border-radius: 10px;
+    overflow: hidden;
+
+    cursor: pointer;
+    position: relative;
+
+    transition:
+        transform .2s,
+        background .2s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    background: #242424;
+}
+
+.cover {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+
+    object-fit: cover;
+    display: block;
+
+    background: #292929;
+}
+
+.card-info {
+    padding: 13px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-chapters {
+    margin-top: 6px;
+
+    color: #888;
+    font-size: 13px;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.primary {
+    background: white;
+    color: black;
+
+    padding: 12px 18px;
+
+    border-radius: 7px;
+    font-weight: bold;
+}
+
+.primary:hover {
+    background: #ddd;
+}
+
+.secondary {
+    background: #333;
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 7px;
+}
+
+.secondary:hover {
+    background: #444;
+}
+
+.danger {
+    background: #8b2222;
+    color: white;
+
+    padding: 12px 18px;
+
+    border-radius: 7px;
+}
+
+.danger:hover {
+    background: #a52b2b;
+}
+
+.back {
+    background: #292929;
+    color: white;
+
+    padding: 10px 15px;
+
+    border-radius: 7px;
+}
+
+.back:hover {
+    background: #3a3a3a;
+}
+
+/* =========================================================
+   FAVORITE
+========================================================= */
+
+.favorite-button {
+    background: #333;
+    color: #ffd84d;
+
+    padding: 12px 18px;
+
+    border-radius: 7px;
+
+    font-weight: bold;
+}
+
+.favorite-button.not-favorite {
+    color: white;
+}
+
+.favorite-button:hover {
+    background: #444;
+}
+
+/* =========================================================
+   ADD
+========================================================= */
+
+.add-button {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    min-width: 150px;
+    height: 52px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 26px;
+    background: white;
+    color: black;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 25px rgba(0,0,0,.5);
+    z-index: 5000;
+}
+.add-button:hover {
+    background: #ddd;
+    transform: translateY(-2px);
+}
+
+.home-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.new-story-home-button {
+    cursor: pointer;
+    white-space: nowrap;
+}
+.card-edit-button {
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.story-progress-tag {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 8px;
+    padding: 4px 9px;
+    border-radius: 12px;
+    background: #2d6cdf;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+}
+/* =========================================================
+   SERIES PAGE
+========================================================= */
+
+.series-page {
+    display: none;
+}
+
+.series-header {
+    display: flex;
+
+    gap: 25px;
+
+    margin-bottom: 30px;
+}
+
+.series-cover {
+    width: 180px;
+    height: 270px;
+
+    object-fit: cover;
+
+    border-radius: 8px;
+
+    background: #292929;
+}
+
+.series-description {
+    color: #aaa;
+
+    margin-top: 15px;
+
+    line-height: 1.6;
+}
+
+.series-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+
+    margin-top: 15px;
+}
+
+.series-tag {
+    background: #292929;
+    color: #aaa;
+
+    padding: 6px 10px;
+
+    border-radius: 15px;
+
+    font-size: 12px;
+}
+
+.series-actions {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 20px;
+}
+
+/* =========================================================
+   CHAPTERS
+========================================================= */
+
+.chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chapter {
+    background: #1d1d1d;
+
+    padding: 17px;
+
+    border-radius: 7px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    cursor: pointer;
+}
+
+.chapter:hover {
+    background: #292929;
+}
+
+.chapter-left {
+    min-width: 0;
+}
+
+.chapter-title {
+    font-weight: bold;
+}
+
+.chapter-info {
+    color: #777;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.chapter-actions {
+    display: flex;
+    gap: 7px;
+}
+
+.small-button {
+    background: #333;
+    color: white;
+
+    padding: 8px 10px;
+
+    border-radius: 6px;
+}
+
+.small-button:hover {
+    background: #444;
+}
+
+
+/* =========================================================
+   FAVORITE STAR + CHAPTER EDIT
+========================================================= */
+
+.favorite-badge {
+    z-index: 5;
+    pointer-events: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,.45);
+}
+
+.chapter-edit-button {
+    background: #333;
+    color: white;
+}
+
+/* =========================================================
+   MODALS
+========================================================= */
+
+.modal {
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,.86);
+
+    align-items: center;
+    justify-content: center;
+
+    z-index: 2000;
+
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-box {
+    width: 100%;
+    max-width: 600px;
+
+    max-height: 90vh;
+
+    overflow-y: auto;
+
+    background: #202020;
+
+    padding: 25px;
+
+    border-radius: 12px;
+}
+
+.modal-box h2 {
+    margin-bottom: 20px;
+}
+
+.modal-box input[type="text"],
+.modal-box input[type="file"],
+.modal-box textarea {
+    width: 100%;
+
+    padding: 12px;
+
+    margin-bottom: 12px;
+
+    background: #303030;
+
+    color: white;
+
+    border: 1px solid #444;
+
+    border-radius: 6px;
+
+    outline: none;
+
+    font-family: inherit;
+}
+
+.modal-box textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.modal-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* =========================================================
+   TAG INPUT
+========================================================= */
+
+.tag-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.tag-input-row input {
+    flex: 1;
+}
+
+.tag-add-button {
+    background: #333;
+    color: white;
+
+    padding: 0 15px;
+
+    border-radius: 6px;
+}
+
+.tag-add-button:hover {
+    background: #444;
+}
+
+.selected-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+
+    margin: 8px 0 15px;
+}
+
+.selected-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    background: #383838;
+
+    color: white;
+
+    padding: 6px 9px;
+
+    border-radius: 15px;
+
+    font-size: 12px;
+}
+
+.remove-tag {
+    background: transparent;
+    color: #aaa;
+
+    padding: 0;
+
+    font-size: 14px;
+}
+
+.remove-tag:hover {
+    color: white;
+}
+
+/* =========================================================
+   CONTENT CHOICE
+========================================================= */
+
+.content-choice {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 12px;
+
+    margin-bottom: 20px;
+}
+
+.content-choice button {
+    background: #2d2d2d;
+    color: white;
+
+    border: 2px solid transparent;
+
+    padding: 18px 10px;
+
+    border-radius: 9px;
+
+    font-size: 16px;
+}
+
+.content-choice button.active {
+    border-color: white;
+    background: #383838;
+}
+
+.upload-section {
+    display: none;
+}
+
+.upload-section.active {
+    display: block;
+}
+
+.selected-files {
+    background: #292929;
+
+    padding: 15px;
+
+    border-radius: 8px;
+
+    margin-top: 5px;
+
+    max-height: 200px;
+
+    overflow-y: auto;
+
+    color: #aaa;
+
+    font-size: 13px;
+}
+
+.file-count {
+    color: white;
+
+    font-weight: bold;
+
+    margin-bottom: 10px;
+}
+
+/* =========================================================
+   READER
+========================================================= */
+
+.reader {
+    display: none;
+
+    min-height: 100vh;
+
+    background: #080808;
+}
+
+.reader-header {
+    position: sticky;
+
+    top: 0;
+
+    height: 60px;
+
+    background: rgba(20,20,20,.96);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 0 15px;
+
+    z-index: 1000;
+
+    border-bottom: 1px solid #292929;
+}
+
+.reader-title {
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    flex: 1;
+
+    text-align: center;
+}
+
+/* =========================================================
+   ZOOM
+========================================================= */
+
+.zoom-controls {
+    display: flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    background: #292929;
+
+    padding: 5px;
+
+    border-radius: 8px;
+
+    flex-shrink: 0;
+}
+
+.zoom-button {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 6px;
+
+    background: #3a3a3a;
+
+    color: white;
+
+    font-size: 20px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-button:hover {
+    background: #505050;
+}
+
+#zoomLevel {
+    min-width: 50px;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    color: #ddd;
+}
+
+/* =========================================================
+   IMAGES
+========================================================= */
+
+.reader-images {
+    width: 100%;
+
+    max-width: 850px;
+
+    margin: 0 auto;
+
+    padding: 0;
+
+    line-height: 0;
+
+    font-size: 0;
+
+    transform-origin: top center;
+
+    transition: transform .15s ease;
+}
+
+.reader-images img {
+    display: block;
+
+    width: 100%;
+    height: auto;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    border: 0;
+
+    vertical-align: top;
+}
+
+/* =========================================================
+   PDF
+========================================================= */
+
+.pdf-reader {
+    width: 100%;
+
+    max-width: 1000px;
+
+    margin: 0 auto;
+
+    line-height: 0;
+}
+
+.pdf-page {
+    display: block;
+
+    width: 100%;
+
+    height: auto;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    border: 0;
+}
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+.progress-container {
+    position: fixed;
+
+    left: 0;
+    top: 0;
+
+    width: 100%;
+    height: 3px;
+
+    background: transparent;
+
+    z-index: 3000;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+
+    background: white;
+}
+
+/* =========================================================
+   MESSAGES
+========================================================= */
+
+.empty {
+    grid-column: 1 / -1;
+
+    text-align: center;
+
+    color: #777;
+
+    padding: 70px 20px;
+}
+
+.loading {
+    text-align: center;
+
+    color: #aaa;
+
+    padding: 25px;
+}
+
+.success {
+    color: #7dff91;
+    margin-top: 10px;
+}
+
+.error {
+    color: #ff7272;
+    margin-top: 10px;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .library.mosaic-10,
+    .library.mosaic-12 {
+        grid-template-columns:
+            repeat(6, minmax(0, 1fr));
+    }
+
+    .library.mosaic-8 {
+        grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+
+    .home-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .new-story-home-button {
+        width: 100%;
+    }
+
+    header {
+        padding: 8px 12px;
+
+        flex-wrap: wrap;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .search {
+        order: 3;
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .library-controls {
+        margin-left: auto;
+    }
+
+    .library {
+        grid-template-columns:
+            repeat(2, 1fr) !important;
+
+        gap: 12px;
+    }
+
+    .series-header {
+        flex-direction: column;
+    }
+
+    .series-cover {
+        width: 140px;
+        height: 210px;
+    }
+
+    .chapter {
+        align-items: flex-start;
+    }
+
+    .chapter-actions {
+        flex-direction: column;
+    }
+
+    .reader-header {
+        padding: 0 6px;
+        gap: 4px;
+    }
+
+    .reader-title {
+        font-size: 12px;
+    }
+
+    .reader-header .back {
+        padding: 8px 8px;
+        font-size: 11px;
+    }
+
+    .zoom-controls {
+        gap: 2px;
+    }
+
+    .zoom-button {
+        width: 29px;
+        height: 29px;
+        font-size: 17px;
+    }
+
+    #zoomLevel {
+        min-width: 40px;
+        font-size: 10px;
+    }
+
+    .content-choice {
+        grid-template-columns: 1fr;
+    }
+
+    .control-button {
+        height: 38px;
+        min-width: 38px;
+        padding: 0 8px;
+    }
+
+    .mosaic-number {
+        font-size: 11px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================================================
+HEADER
+========================================================= -->
+
+<header id="mainHeader">
+
+    <div class="logo">
+        MYTOON
+    </div>
+
+    <div class="search">
+
+        <input
+            id="search"
+            type="text"
+            placeholder="Search a story..."
+            oninput="searchSeries()"
+        >
+
+    </div>
+
+    <!-- ONLY CHANGE: controls are now NEXT TO THE SEARCH BAR -->
+
+    <div class="library-controls">
+
+        <button
+            id="customOrderButton"
+            class="control-button"
+            onclick="toggleCustomOrder()"
+            title="Custom order"
+        >
+            ☷ ↕
+        </button>
+
+        <button
+            id="mosaicButton"
+            class="control-button mosaic-button"
+            onclick="cycleMosaic()"
+            title="Change mosaic"
+        >
+            ▦
+            <span
+                id="mosaicNumber"
+                class="mosaic-number"
+            >
+                6
+            </span>
+        </button>
+
+    </div>
+
+</header>
+
+
+<!-- =========================================================
+HOME
+========================================================= -->
+
+<main
+    class="container"
+    id="home"
+>
+
+    <div class="home-title-row">
+        <h1>
+            My Library
+        </h1>
+        <button
+            id="homeNewStoryButton"
+            class="primary new-story-home-button"
+            type="button"
+            onclick="openSeriesModal()"
+        >
+            ＋ New Story
+        </button>
+    </div>
+
+    <div id="collectionsBar" class="collections-bar"></div>
+
+    <div
+        id="tagsBar"
+        class="tags-bar"
+    ></div>
+
+    <div
+        id="library"
+        class="library mosaic-6"
+    ></div>
+
+</main>
+
+
+<!-- =========================================================
+SERIES PAGE
+========================================================= -->
+
+<main
+    id="seriesPage"
+    class="container series-page"
+>
+
+    <button
+        class="back"
+        onclick="showHome()"
+    >
+        ← Back
+    </button>
+
+    <div class="series-header">
+
+        <img
+            id="seriesCover"
+            class="series-cover"
+            alt=""
+        >
+
+        <div>
+
+            <h1 id="seriesTitle"></h1>
+
+            <p
+                id="seriesDescription"
+                class="series-description"
+            ></p>
+
+            <div
+                id="seriesTags"
+                class="series-tags"
+            ></div>
+            <div id="seriesCollections" class="series-tags"></div>
+            <div id="seriesStatus" class="status-badge"></div>
+
+            <div class="series-actions">
+
+                <button
+                    class="primary"
+                    onclick="openChapterModal()"
+                >
+                    + Add Chapter
+                </button>
+
+                <button
+                    id="favoriteButton"
+                    class="favorite-button not-favorite"
+                    onclick="toggleFavorite()"
+                >
+                    ☆ Add to favorites
+                </button>
+
+                <button
+                    class="secondary"
+                    onclick="openEditSeriesModal()"
+                >
+                    ✏ Edit
+                </button>
+
+                <button
+                    class="danger"
+                    onclick="deleteCurrentSeries()"
+                >
+                    🗑 Delete
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <h2>
+        Chapters
+    </h2>
+
+    <br>
+
+    <div
+        id="chapterList"
+        class="chapter-list"
+    ></div>
+
+</main>
+
+
+<!-- =========================================================
+READER
+========================================================= -->
+
+<div
+    id="reader"
+    class="reader"
+>
+
+    <div class="progress-container">
+
+        <div
+            id="progressBar"
+            class="progress-bar"
+        ></div>
+
+    </div>
+
+    <div class="reader-header">
+
+        <button
+            class="back"
+            onclick="closeReader()"
+        >
+            ← Back
+        </button>
+
+        <strong
+            id="readerTitle"
+            class="reader-title"
+        ></strong>
+
+<div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+    <button id="verticalModeButton" class="reader-mode-button" onclick="setReadingMode('vertical')">▤ Vertical</button>
+    <button id="singleModeButton" class="reader-mode-button" onclick="setReadingMode('single')">▣ Single</button>
+    <button id="doubleModeButton" class="reader-mode-button" onclick="setReadingMode('double')">▥ Double</button>
+</div>
+
+        <div class="zoom-controls">
+
+            <button
+                class="zoom-button"
+                onclick="zoomOut()"
+            >
+                −
+            </button>
+
+            <span id="zoomLevel">
+                100%
+            </span>
+
+            <button
+                class="zoom-button"
+                onclick="zoomIn()"
+            >
+                +
+            </button>
+
+            <button
+                class="zoom-button"
+                onclick="resetZoom()"
+            >
+                🔍
+            </button>
+
+        </div>
+
+    </div>
+
+    <div
+        id="readerImages"
+        class="reader-images"
+    ></div>
+
+<div
+    id="singlePageControls"
+    style="
+        display:none;
+        justify-content:center;
+        align-items:center;
+        gap:15px;
+        padding:20px;
+    "
+>
+    <button
+        class="secondary"
+        onclick="previousPage()"
+    >
+        ← Previous
+    </button>
+
+    <span id="pageCounter">
+        Page 1 / 1
+    </span>
+
+    <button
+        class="secondary"
+        onclick="nextPage()"
+    >
+        Next →
+    </button>
+</div>
+
+<div class="reader-navigation">
+    <button class="secondary" onclick="previousChapter()">← Previous Chapter</button>
+    <button class="secondary" onclick="nextChapter()">Next Chapter →</button>
+</div>
+
+</div> <!-- END READER -->
+
+
+<!-- =========================================================
+CLOUD SYNC
+========================================================= -->
+<div id="cloudBar" style="position:fixed;left:15px;bottom:15px;z-index:5001;background:#1b1b1b;border:1px solid #333;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 5px 25px rgba(0,0,0,.45);font-size:12px;">
+    <span id="cloudStatus">☁ Local only</span>
+    <button id="cloudLoginButton" class="small-button" type="button" onclick="openCloudAuth()">Cloud login</button>
+    <button id="cloudSyncButton" class="small-button" type="button" onclick="syncNow()" style="display:none">Sync</button>
+    <button id="cloudLogoutButton" class="small-button" type="button" onclick="cloudLogout()" style="display:none">Logout</button>
+</div>
+
+<div id="cloudAuthModal" class="modal">
+    <div class="modal-box">
+        <h2>MYTOON Cloud</h2>
+        <p style="color:#aaa;margin-bottom:15px;">Use the same account on your PC, phone and other devices.</p>
+        <input id="cloudEmail" type="email" placeholder="Email">
+        <input id="cloudPassword" type="password" placeholder="Password">
+        <div id="cloudAuthStatus"></div>
+        <div class="modal-buttons">
+            <button class="primary" type="button" onclick="cloudSignIn()">Sign in</button>
+            <button class="secondary" type="button" onclick="cloudSignUp()">Create account</button>
+            <button class="secondary" type="button" onclick="closeCloudAuth()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================
+NEW SERIES MODAL
+========================================================= -->
+
+<div
+    id="seriesModal"
+    class="modal"
+>
+
+    <div class="modal-box">
+
+        <h2>
+            New Story
+        </h2>
+
+        <input
+            id="newTitle"
+            type="text"
+            placeholder="Story name"
+        >
+
+        <textarea
+            id="newDescription"
+            placeholder="Description"
+        ></textarea>
+
+        <p style="color:#aaa;margin-bottom:8px;">
+            Cover
+        </p>
+
+        <input
+            id="newCover"
+            type="file"
+            accept="image/*"
+        >
+
+        <p style="color:#aaa;margin:15px 0 8px;">
+            Tags
+        </p>
+
+        <div class="tag-input-row">
+
+            <input
+                id="newTagInput"
+                type="text"
+                placeholder="Add a tag"
+                onkeydown="handleTagKey(event, 'new')"
+            >
+
+            <button
+                class="tag-add-button"
+                onclick="addTag('new')"
+            >
+                Add
+            </button>
+
+        </div>
+
+        <div
+            id="newSelectedTags"
+            class="selected-tags"
+        ></div>
+
+        <p style="color:#aaa;margin:15px 0 8px;">Collections</p>
+        <input id="newCollectionsInput" type="text" placeholder="BL, Favorites, Completed...">
+        <p style="color:#aaa;margin:5px 0 8px;">Status</p>
+        <select id="newStatus" style="width:100%;padding:12px;background:#303030;color:white;border:1px solid #444;border-radius:6px;">
+            <option value="Reading">Reading</option><option value="Completed">Completed</option><option value="On Hold">On Hold</option><option value="Plan to Read">Plan to Read</option>
+        </select>
+
+        <div class="modal-buttons">
+
+            <button
+                class="primary"
+                onclick="createSeries()"
+            >
+                Create
+            </button>
+
+            <button
+                class="secondary"
+                onclick="closeSeriesModal()"
+            >
+                Cancel
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+EDIT SERIES MODAL
+========================================================= -->
+
+<div
+    id="editSeriesModal"
+    class="modal"
+>
+
+    <div class="modal-box">
+
+        <h2>
+            Edit Story
+        </h2>
+
+        <input
+            id="editTitle"
+            type="text"
+            placeholder="Name"
+        >
+
+        <textarea
+            id="editDescription"
+            placeholder="Description"
+        ></textarea>
+
+        <p style="color:#aaa;margin-bottom:8px;">
+            New cover (optional)
+        </p>
+
+        <input
+            id="editCover"
+            type="file"
+            accept="image/*"
+        >
+
+        <p style="color:#aaa;margin:15px 0 8px;">
+            Tags
+        </p>
+
+        <div class="tag-input-row">
+
+            <input
+                id="editTagInput"
+                type="text"
+                placeholder="Add a tag"
+                onkeydown="handleTagKey(event, 'edit')"
+            >
+
+            <button
+                class="tag-add-button"
+                onclick="addTag('edit')"
+            >
+                Add
+            </button>
+
+        </div>
+
+        <div
+            id="editSelectedTags"
+            class="selected-tags"
+        ></div>
+
+        <p style="color:#aaa;margin:15px 0 8px;">Collections</p>
+        <input id="editCollectionsInput" type="text" placeholder="BL, Favorites, Completed...">
+        <p style="color:#aaa;margin:5px 0 8px;">Status</p>
+        <select id="editStatus" style="width:100%;padding:12px;background:#303030;color:white;border:1px solid #444;border-radius:6px;">
+            <option value="Reading">Reading</option><option value="Completed">Completed</option><option value="On Hold">On Hold</option><option value="Plan to Read">Plan to Read</option>
+        </select>
+
+        <div class="modal-buttons">
+
+            <button
+                class="primary"
+                onclick="saveSeriesEdit()"
+            >
+                Save
+            </button>
+
+            <button
+                class="secondary"
+                onclick="closeEditSeriesModal()"
+            >
+                Cancel
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+CHAPTER MODAL
+========================================================= -->
+
+<div
+    id="chapterModal"
+    class="modal"
+>
+
+    <div class="modal-box">
+
+        <h2>
+            New Chapter
+        </h2>
+
+        <input
+            id="chapterTitle"
+            type="text"
+            placeholder="Example: Chapter 1"
+        >
+
+        <p
+            style="
+                color:#aaa;
+                margin-bottom:10px;
+            "
+        >
+            Content type
+        </p>
+
+        <div class="content-choice">
+
+            <button
+                id="imagesChoice"
+                class="active"
+                onclick="selectContentType('images')"
+            >
+                🖼️ Images
+                <br>
+                <small>
+                    Multiple images
+                </small>
+            </button>
+
+            <button
+                id="pdfChoice"
+                onclick="selectContentType('pdf')"
+            >
+                📄 PDF
+                <br>
+                <small>
+                    One PDF file
+                </small>
+            </button>
+
+        </div>
+
+        <div
+            id="imagesUpload"
+            class="upload-section active"
+        >
+
+            <p
+                style="
+                    color:#aaa;
+                    margin-bottom:8px;
+                "
+            >
+                Select all chapter images
+            </p>
+
+            <input
+                id="chapterImages"
+                type="file"
+                accept="image/*"
+                multiple
+                onchange="showSelectedFiles()"
+            >
+
+            <div
+                id="selectedFiles"
+                class="selected-files"
+                style="display:none;"
+            ></div>
+
+        </div>
+
+        <div
+            id="pdfUpload"
+            class="upload-section"
+        >
+
+            <p
+                style="
+                    color:#aaa;
+                    margin-bottom:8px;
+                "
+            >
+                Select the chapter PDF
+            </p>
+
+            <input
+                id="chapterPDF"
+                type="file"
+                accept="application/pdf,.pdf"
+                onchange="showSelectedPDF()"
+            >
+
+            <div
+                id="selectedPDF"
+                class="selected-files"
+                style="display:none;"
+            ></div>
+
+        </div>
+
+        <div id="chapterStatus"></div>
+
+        <div class="modal-buttons">
+
+            <button
+                id="createChapterButton"
+                class="primary"
+                onclick="createChapter()"
+            >
+                Create Chapter
+            </button>
+
+            <button
+                class="secondary"
+                onclick="closeChapterModal()"
+            >
+                Cancel
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+<!-- =========================================================
+EDIT CHAPTER MODAL
+========================================================= -->
+
+<div
+    id="editChapterModal"
+    class="modal"
+>
+    <div class="modal-box">
+
+        <h2>Edit Chapter</h2>
+
+        <input
+            id="editChapterTitle"
+            type="text"
+            placeholder="Chapter name"
+        >
+
+        <p style="color:#aaa;margin:15px 0 8px;">
+            Replace content (optional)
+        </p>
+
+        <input
+            id="editChapterImages"
+            type="file"
+            accept="image/*"
+            multiple
+        >
+
+        <br><br>
+
+        <input
+            id="editChapterPDF"
+            type="file"
+            accept="application/pdf,.pdf"
+        >
+
+        <div id="editChapterStatus"></div>
+
+        <div class="modal-buttons">
+            <button
+                class="primary"
+                type="button"
+                onclick="saveChapterEdit()"
+            >
+                Save
+            </button>
+
+            <button
+                class="secondary"
+                type="button"
+                onclick="closeEditChapterModal()"
+            >
+                Cancel
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+
+/* =========================================================
+   PDF.JS
+========================================================= */
+
+import {
+    GlobalWorkerOptions,
+    getDocument
+} from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+
+GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+
+/* =========================================================
+   CLOUD SYNC — SUPABASE
+   Fill these two values with your Supabase project values.
+   Use ONLY the publishable/anon key in browser code. NEVER use
+   a service_role/secret key here.
+========================================================= */
+const SUPABASE_URL = "https://vyvaqapdfoqzsekclorp.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_PVrX1nQCxH_ZwdC7LLgSTQ_0nLsRZyn";
+const CLOUD_BUCKET = "mytoon-files";
+const CLOUD_ENABLED =
+    SUPABASE_URL.startsWith("https://") &&
+    !SUPABASE_URL.includes("YOUR_") &&
+    !SUPABASE_PUBLISHABLE_KEY.includes("YOUR_");
+
+let supabaseClient = null;
+let cloudSyncRunning = false;
+
+if (CLOUD_ENABLED && window.supabase) {
+    supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY,
+        { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+    );
+}
+
+function setCloudStatus(text, ok=false) {
+    const el = document.getElementById("cloudStatus");
+    if (el) { el.textContent = text; el.style.color = ok ? "#7dff91" : "#aaa"; }
+}
+
+function cloudError(message) {
+    console.error("MYTOON cloud:", message);
+    const el = document.getElementById("cloudAuthStatus");
+    if (el) el.innerHTML = `<div class="error">${escapeHTML(String(message))}</div>`;
+}
+
+window.openCloudAuth = function() {
+    if (!CLOUD_ENABLED) {
+        alert("Cloud is not configured yet. Add your Supabase URL and publishable key in index26-cloud.html.");
+        return;
+    }
+    document.getElementById("cloudAuthStatus").innerHTML = "";
+    document.getElementById("cloudAuthModal").classList.add("active");
+    document.getElementById("cloudAuthModal").style.display = "flex";
+};
+window.closeCloudAuth = function() {
+    document.getElementById("cloudAuthModal").classList.remove("active");
+    document.getElementById("cloudAuthModal").style.display = "none";
+};
+
+window.cloudSignIn = async function cloudSignIn() {
+    if (!supabaseClient) return;
+    const email = document.getElementById("cloudEmail").value.trim();
+    const password = document.getElementById("cloudPassword").value;
+    if (!email || !password) return cloudError("Enter your email and password.");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) return cloudError(error.message);
+    closeCloudAuth();
+    await updateCloudUI();
+}
+
+window.cloudSignUp = async function cloudSignUp() {
+    if (!supabaseClient) return;
+    const email = document.getElementById("cloudEmail").value.trim();
+    const password = document.getElementById("cloudPassword").value;
+    if (!email || password.length < 6) return cloudError("Use an email and a password of at least 6 characters.");
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return cloudError(error.message);
+    if (data.session) {
+        closeCloudAuth();
+        await updateCloudUI();
+    } else {
+        document.getElementById("cloudAuthStatus").innerHTML = '<div class="success">Account created. Check your email if confirmation is enabled, then sign in.</div>';
+    }
+}
+
+window.cloudLogout = async function() {
+    if (!supabaseClient) return;
+    await supabaseClient.auth.signOut();
+    await updateCloudUI();
+};
+
+async function getCloudUser() {
+    if (!supabaseClient) return null;
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user || null;
+}
+
+async function updateCloudUI() {
+    const login = document.getElementById("cloudLoginButton");
+    const sync = document.getElementById("cloudSyncButton");
+    const logout = document.getElementById("cloudLogoutButton");
+    if (!CLOUD_ENABLED || !supabaseClient) {
+        setCloudStatus("☁ Local only");
+        if (login) login.style.display = "inline-flex";
+        if (sync) sync.style.display = "none";
+        if (logout) logout.style.display = "none";
+        return;
+    }
+    const user = await getCloudUser();
+    if (!user) {
+        setCloudStatus("☁ Not signed in");
+        if (login) login.style.display = "inline-flex";
+        if (sync) sync.style.display = "none";
+        if (logout) logout.style.display = "none";
+    } else {
+        setCloudStatus(`☁ ${user.email || "Cloud"}`, true);
+        if (login) login.style.display = "none";
+        if (sync) sync.style.display = "inline-flex";
+        if (logout) logout.style.display = "inline-flex";
+    }
+}
+
+function blobFromUnknown(value) {
+    if (!value) return null;
+    if (value instanceof Blob) return value;
+    if (value?.blob instanceof Blob) return value.blob;
+    return null;
+}
+
+function safeFileName(name) {
+    return String(name || "file").replace(/[^a-zA-Z0-9._-]+/g, "_");
+}
+
+// Supabase Storage can reject a single object when it is above the bucket/plan limit.
+// To keep MYTOON working with large PDFs and image files, large files are split into
+// smaller Storage objects. The metadata in the database tells MYTOON how to rebuild them.
+const MYTOON_UPLOAD_CHUNK_SIZE = 20 * 1024 * 1024; // 20 MiB per object
+
+async function uploadOneCloudObject(path, blob) {
+    const { error } = await supabaseClient.storage.from(CLOUD_BUCKET).upload(path, blob, {
+        contentType: blob.type || "application/octet-stream",
+        upsert: true
+    });
+    if (error) throw error;
+}
+
+async function uploadCloudFile(userId, cloudId, kind, file, name) {
+    const blob = blobFromUnknown(file);
+    if (!blob) return null;
+
+    const cleanName = safeFileName(name);
+    const basePath = `${userId}/${kind}/${cloudId}/${cleanName}`;
+
+    // Normal files stay as one object.
+    if (blob.size <= MYTOON_UPLOAD_CHUNK_SIZE) {
+        await uploadOneCloudObject(basePath, blob);
+        return basePath;
+    }
+
+    // Large files are uploaded in independent chunks so one oversized object
+    // cannot abort the whole library sync.
+    const totalChunks = Math.ceil(blob.size / MYTOON_UPLOAD_CHUNK_SIZE);
+    const parts = [];
+
+    for (let index = 0; index < totalChunks; index++) {
+        const start = index * MYTOON_UPLOAD_CHUNK_SIZE;
+        const end = Math.min(start + MYTOON_UPLOAD_CHUNK_SIZE, blob.size);
+        const chunk = blob.slice(start, end, blob.type || "application/octet-stream");
+        const partPath = `${basePath}.part-${String(index + 1).padStart(5, "0")}-of-${String(totalChunks).padStart(5, "0")}`;
+        await uploadOneCloudObject(partPath, chunk);
+        parts.push(partPath);
+        setCloudStatus(`☁ Uploading ${cleanName}: ${index + 1}/${totalChunks}`);
+    }
+
+    return {
+        chunked: true,
+        mime: blob.type || "application/octet-stream",
+        size: blob.size,
+        parts
+    };
+}
+
+async function downloadCloudFile(reference) {
+    if (!reference) return null;
+
+    // Backward compatible with files uploaded by the earlier version.
+    if (typeof reference === "string") {
+        const { data, error } = await supabaseClient.storage.from(CLOUD_BUCKET).download(reference);
+        if (error) throw error;
+        return data;
+    }
+
+    if (!reference.chunked || !Array.isArray(reference.parts)) return null;
+
+    const blobs = [];
+    for (let i = 0; i < reference.parts.length; i++) {
+        const { data, error } = await supabaseClient.storage.from(CLOUD_BUCKET).download(reference.parts[i]);
+        if (error) throw error;
+        blobs.push(data);
+    }
+    return new Blob(blobs, { type: reference.mime || "application/octet-stream" });
+}
+
+function seriesToCloudPayload(series) {
+    return {
+        title: series.title || "",
+        description: series.description || "",
+        tags: Array.isArray(series.tags) ? series.tags : [],
+        collections: Array.isArray(series.collections) ? series.collections : [],
+        status: series.status || "Reading",
+        favorite: !!series.favorite,
+        lastChapterId: series.lastChapterId ?? null,
+        lastChapterCloudId: series.lastChapterCloudId ?? null,
+        lastScroll: Number(series.lastScroll || 0),
+        chapterProgress: Number(series.chapterProgress || 0),
+        order: Number(series.order ?? 0),
+        createdAt: Number(series.createdAt || Date.now()),
+        coverPath: series.cloudCoverPath || null
+    };
+}
+
+async function uploadSeriesFiles(userId, cloudId, series) {
+    let payload = seriesToCloudPayload(series);
+    const cover = blobFromUnknown(series.cover);
+    if (cover) payload.coverPath = await uploadCloudFile(userId, cloudId, "covers", cover, "cover");
+    return payload;
+}
+
+async function uploadChapterFiles(userId, cloudId, chapter) {
+    const payload = {
+        title: chapter.title || "",
+        type: chapter.type || (chapter.pdf ? "pdf" : "images"),
+        order: Number(chapter.order ?? 0),
+        createdAt: Number(chapter.createdAt || Date.now()),
+        files: []
+    };
+    if (payload.type === "pdf") {
+        const pdf = blobFromUnknown(chapter.pdf);
+        if (pdf) payload.files.push({ name: "chapter.pdf", path: await uploadCloudFile(userId, cloudId, "pdf", pdf, "chapter.pdf") });
+    } else {
+        for (const image of (chapter.images || [])) {
+            const blob = blobFromUnknown(image);
+            if (!blob) continue;
+            payload.files.push({ name: image.name || "page", path: await uploadCloudFile(userId, cloudId, "images", blob, image.name || "page") });
+        }
+    }
+    return payload;
+}
+
+window.syncNow = async function syncNow() {
+    if (!CLOUD_ENABLED || !supabaseClient) {
+        setCloudStatus("☁ Cloud not configured");
+        return alert("Cloud is not configured yet.");
+    }
+    if (cloudSyncRunning) return;
+    const user = await getCloudUser();
+    if (!user) return openCloudAuth();
+
+    cloudSyncRunning = true;
+    setCloudStatus("☁ Uploading local library…");
+    try {
+        // FIRST SYNC IS INTENTIONALLY ONE-WAY: IndexedDB → Cloud.
+        // This protects the existing local library from being overwritten.
+        await pushLocalToCloud(user.id);
+        await renderLibrary(document.getElementById("search")?.value || "");
+        setCloudStatus("☁ Local library uploaded", true);
+        alert("MYTOON: your local library has been uploaded to the cloud.\n\nNothing was downloaded from the cloud or used to overwrite your local library.");
+    } catch (error) {
+        console.error("MYTOON cloud sync failed:", error);
+        const message = error?.message || String(error);
+        setCloudStatus("☁ Sync error");
+        alert("Cloud sync failed: " + message);
+    } finally {
+        cloudSyncRunning = false;
+    }
+}
+
+async function pushLocalToCloud(userId) {
+    const seriesList = await dbGetAll("series");
+    const chapters = await dbGetAll("chapters");
+
+    for (const series of seriesList) {
+        if (!series.cloudId) series.cloudId = crypto.randomUUID();
+        const children = chapters.filter(c => Number(c.seriesId) === Number(series.id));
+        const currentChapter = children.find(c => Number(c.id) === Number(series.lastChapterId));
+        if (currentChapter && !currentChapter.cloudId) currentChapter.cloudId = crypto.randomUUID();
+        series.lastChapterCloudId = currentChapter?.cloudId || null;
+        for (const chapter of children) {
+            if (!chapter.cloudId) chapter.cloudId = crypto.randomUUID();
+            await dbPut("chapters", chapter);
+        }
+        const payload = await uploadSeriesFiles(userId, series.cloudId, series);
+        await dbPut("series", series);
+        const { error } = await supabaseClient.from("mytoon_series").upsert({
+            id: series.cloudId, user_id: userId, data: payload, updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
+        if (error) throw error;
+
+        for (const chapter of children) {
+            const cp = await uploadChapterFiles(userId, chapter.cloudId, chapter);
+            await dbPut("chapters", chapter);
+            const { error: ce } = await supabaseClient.from("mytoon_chapters").upsert({
+                id: chapter.cloudId, user_id: userId, series_id: series.cloudId, data: cp, updated_at: new Date().toISOString()
+            }, { onConflict: "id" });
+            if (ce) throw ce;
+        }
+    }
+}
+
+async function pullCloudToLocal(userId) {
+    const { data: cloudSeries, error: se } = await supabaseClient.from("mytoon_series").select("*").eq("user_id", userId);
+    if (se) throw se;
+    const { data: cloudChapters, error: ce } = await supabaseClient.from("mytoon_chapters").select("*").eq("user_id", userId);
+    if (ce) throw ce;
+
+    const localSeries = await dbGetAll("series");
+    const localChapters = await dbGetAll("chapters");
+    const seriesByCloud = new Map(localSeries.filter(s => s.cloudId).map(s => [s.cloudId, s]));
+    const chapterByCloud = new Map(localChapters.filter(c => c.cloudId).map(c => [c.cloudId, c]));
+
+    for (const row of cloudSeries || []) {
+        const d = row.data || {};
+        let local = seriesByCloud.get(row.id);
+        if (!local) {
+            const { id, ...newSeries } = d;
+            local = { ...newSeries, cloudId: row.id, lastChapterCloudId: d.lastChapterCloudId || null, cover: null };
+            local.id = await dbAdd("series", local);
+            seriesByCloud.set(row.id, local);
+        } else {
+            local.title = d.title; local.description = d.description; local.tags = d.tags;
+            local.collections = d.collections; local.status = d.status; local.favorite = d.favorite;
+            local.lastChapterId = d.lastChapterId; local.lastChapterCloudId = d.lastChapterCloudId || null; local.lastScroll = d.lastScroll; local.chapterProgress = d.chapterProgress; local.order = d.order;
+            await dbPut("series", local);
+        }
+        if (d.coverPath) {
+            try { local.cover = await downloadCloudFile(d.coverPath); await dbPut("series", local); } catch(e) { console.warn("Cover download failed", e); }
+        }
+    }
+
+    for (const row of cloudChapters || []) {
+        const d = row.data || {};
+        const parent = seriesByCloud.get(row.series_id);
+        if (!parent) continue;
+        let local = chapterByCloud.get(row.id);
+        if (!local) local = { cloudId: row.id, seriesId: parent.id, title: d.title, type: d.type, order: d.order, createdAt: d.createdAt, images: [], pdf: null };
+        local.seriesId = parent.id; local.title = d.title; local.type = d.type; local.order = d.order; local.createdAt = d.createdAt;
+        if (d.type === "pdf") {
+            const f = d.files?.[0];
+            if (f?.path) { try { local.pdf = await downloadCloudFile(f.path); local.images = []; } catch(e) { console.warn("PDF download failed", e); } }
+        } else {
+            local.images = [];
+            for (const f of (d.files || [])) {
+                try { local.images.push({ name: f.name, blob: await downloadCloudFile(f.path) }); } catch(e) { console.warn("Image download failed", e); }
+            }
+            local.pdf = null;
+        }
+        if (local.id == null) local.id = await dbAdd("chapters", local); else await dbPut("chapters", local);
+        chapterByCloud.set(row.id, local);
+    }
+}
+
+/* =========================================================
+   INDEXEDDB
+   VERSION 3 — DO NOT LOWER THIS
+========================================================= */
+
+const DB_NAME =
+    "MYTOON_DATABASE";
+
+const DB_VERSION =
+    3;
+
+let db = null;
+
+let currentSeriesId = null;
+
+let currentChapterId = null;
+
+let currentChapterType = null;
+
+/* =========================================================
+   READING MODE
+========================================================= */
+
+
+
+/* =========================================================
+   MOSAIC
+========================================================= */
+
+let mosaicSizes = [6, 8, 10, 12];
+
+let currentMosaicIndex = 0;
+
+
+/* =========================================================
+   CUSTOM ORDER
+========================================================= */
+
+let customOrderMode = false;
+
+
+/* =========================================================
+   TAGS
+========================================================= */
+
+let selectedNewTags = [];
+
+let selectedEditTags = [];
+
+let activeTagFilter = null;
+let activeCollectionFilter = null;
+let readingMode = "vertical";
+let currentPageIndex = 0;
+let currentDoubleIndex = 0;
+
+
+/* =========================================================
+   ZOOM
+========================================================= */
+
+let readerZoom = 1;
+
+const MIN_ZOOM = 0.5;
+
+const MAX_ZOOM = 3;
+
+const ZOOM_STEP = 0.1;
+
+
+/* =========================================================
+   OPEN DATABASE
+========================================================= */
+
+function openDatabase() {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const request =
+                indexedDB.open(
+                    DB_NAME,
+                    DB_VERSION
+                );
+
+
+            request.onupgradeneeded =
+                function(event) {
+
+                    const database =
+                        event.target.result;
+
+
+                    if (
+                        !database.objectStoreNames
+                            .contains("series")
+                    ) {
+
+                        database.createObjectStore(
+                            "series",
+                            {
+                                keyPath: "id",
+                                autoIncrement: true
+                            }
+                        );
+
+                    }
+
+
+                    if (
+                        !database.objectStoreNames
+                            .contains("chapters")
+                    ) {
+
+                        const chapters =
+                            database.createObjectStore(
+                                "chapters",
+                                {
+                                    keyPath: "id",
+                                    autoIncrement: true
+                                }
+                            );
+
+
+                        chapters.createIndex(
+                            "seriesId",
+                            "seriesId",
+                            {
+                                unique: false
+                            }
+                        );
+
+                    }
+
+                };
+
+
+            request.onsuccess =
+                function(event) {
+
+                    db =
+                        event.target.result;
+
+                    resolve(db);
+
+                };
+
+
+            request.onerror =
+                function() {
+
+                    reject(
+                        request.error
+                    );
+
+                };
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   DB ADD
+========================================================= */
+
+function dbAdd(
+    storeName,
+    object
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    [storeName],
+                    "readwrite"
+                );
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+            const request =
+                store.add(object);
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   DB PUT
+========================================================= */
+
+function dbPut(
+    storeName,
+    object
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    [storeName],
+                    "readwrite"
+                );
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+            const request =
+                store.put(object);
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   DB GET
+========================================================= */
+
+function dbGet(
+    storeName,
+    id
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    [storeName],
+                    "readonly"
+                );
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+            const request =
+                store.get(id);
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   DB GET ALL
+========================================================= */
+
+function dbGetAll(
+    storeName
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    [storeName],
+                    "readonly"
+                );
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+            const request =
+                store.getAll();
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   DB DELETE
+========================================================= */
+
+function dbDelete(
+    storeName,
+    id
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    [storeName],
+                    "readwrite"
+                );
+
+            const store =
+                transaction.objectStore(
+                    storeName
+                );
+
+            const request =
+                store.delete(id);
+
+            request.onsuccess =
+                () =>
+                    resolve();
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   CHAPTERS
+========================================================= */
+
+function getChapters(
+    seriesId
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    ["chapters"],
+                    "readonly"
+                );
+
+            const store =
+                transaction.objectStore(
+                    "chapters"
+                );
+
+            const index =
+                store.index(
+                    "seriesId"
+                );
+
+            const request =
+                index.getAll(
+                    seriesId
+                );
+
+            request.onsuccess =
+                () =>
+                    resolve(
+                        request.result
+                    );
+
+            request.onerror =
+                () =>
+                    reject(
+                        request.error
+                    );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+
+function placeholder() {
+
+    return (
+        "data:image/svg+xml;charset=UTF-8," +
+
+        encodeURIComponent(`
+
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="400"
+                height="600"
+            >
+
+                <rect
+                    width="100%"
+                    height="100%"
+                    fill="#292929"
+                />
+
+                <text
+                    x="50%"
+                    y="50%"
+                    fill="white"
+                    text-anchor="middle"
+                    font-size="25"
+                >
+                    MYTOON
+                </text>
+
+            </svg>
+
+        `)
+    );
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHTML(text) {
+
+    return String(text)
+
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+/* =========================================================
+   MOSAIC
+========================================================= */
+
+function applyMosaic() {
+
+    const library =
+        document.getElementById(
+            "library"
+        );
+
+    const size =
+        mosaicSizes[
+            currentMosaicIndex
+        ];
+
+    library.classList.remove(
+        "mosaic-6",
+        "mosaic-8",
+        "mosaic-10",
+        "mosaic-12"
+    );
+
+    library.classList.add(
+        `mosaic-${size}`
+    );
+
+    document.getElementById(
+        "mosaicNumber"
+    ).textContent =
+        size;
+
+}
+
+
+window.cycleMosaic =
+function() {
+
+    currentMosaicIndex++;
+
+    if (
+        currentMosaicIndex >=
+        mosaicSizes.length
+    ) {
+
+        currentMosaicIndex = 0;
+
+    }
+
+    applyMosaic();
+
+};
+
+
+/* =========================================================
+   CUSTOM ORDER MODE
+========================================================= */
+
+window.toggleCustomOrder =
+async function() {
+
+    customOrderMode =
+        !customOrderMode;
+
+    const button =
+        document.getElementById(
+            "customOrderButton"
+        );
+
+    if (customOrderMode) {
+
+        button.classList.add(
+            "active"
+        );
+
+        button.title =
+            "Finish custom order";
+
+    } else {
+
+        button.classList.remove(
+            "active"
+        );
+
+        button.title =
+            "Custom order";
+
+        await saveCurrentVisualOrder();
+
+    }
+
+    await renderLibrary();
+
+};
+
+
+/* =========================================================
+   SAVE CUSTOM ORDER
+========================================================= */
+
+async function saveCurrentVisualOrder() {
+
+    const cards =
+        Array.from(
+            document.querySelectorAll(
+                "#library .card"
+            )
+        );
+
+    for (
+        let i = 0;
+        i < cards.length;
+        i++
+    ) {
+
+        const id =
+            Number(
+                cards[i].dataset.seriesId
+            );
+
+        const series =
+            await dbGet(
+                "series",
+                id
+            );
+
+        if (!series)
+            continue;
+
+        series.order =
+            i;
+
+        await dbPut(
+            "series",
+            series
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   TAGS — ADD
+========================================================= */
+
+window.handleTagKey =
+function(event, type) {
+
+    if (
+        event.key === "Enter"
+    ) {
+
+        event.preventDefault();
+
+        addTag(type);
+
+    }
+
+};
+
+
+window.addTag =
+function(type) {
+
+    const input =
+        document.getElementById(
+            type === "new"
+            ? "newTagInput"
+            : "editTagInput"
+        );
+
+    const value =
+        input.value.trim();
+
+    if (!value)
+        return;
+
+    const tags =
+        type === "new"
+        ? selectedNewTags
+        : selectedEditTags;
+
+    const normalized =
+        value.toLowerCase();
+
+    if (
+        !tags.some(
+            tag =>
+                tag.toLowerCase() ===
+                normalized
+        )
+    ) {
+
+        tags.push(value);
+
+    }
+
+    input.value = "";
+
+    renderSelectedTags(type);
+
+};
+
+
+function renderSelectedTags(type) {
+
+    const container =
+        document.getElementById(
+            type === "new"
+            ? "newSelectedTags"
+            : "editSelectedTags"
+        );
+
+    const tags =
+        type === "new"
+        ? selectedNewTags
+        : selectedEditTags;
+
+    container.innerHTML = "";
+
+    tags.forEach(
+        (tag, index) => {
+
+            const element =
+                document.createElement(
+                    "div"
+                );
+
+            element.className =
+                "selected-tag";
+
+            element.innerHTML = `
+
+                ${escapeHTML(tag)}
+
+                <button
+                    class="remove-tag"
+                    onclick="
+                        removeTag(
+                            '${type}',
+                            ${index}
+                        )
+                    "
+                >
+                    ×
+                </button>
+
+            `;
+
+            container.appendChild(
+                element
+            );
+
+        }
+    );
+
+}
+
+
+window.removeTag =
+function(type, index) {
+
+    const tags =
+        type === "new"
+        ? selectedNewTags
+        : selectedEditTags;
+
+    tags.splice(
+        index,
+        1
+    );
+
+    renderSelectedTags(type);
+
+};
+
+
+/* =========================================================
+   RENDER COLLECTION FILTERS
+========================================================= */
+async function renderCollectionFilters() {
+    const container = document.getElementById("collectionsBar");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const seriesList = await dbGetAll("series");
+    const all = [];
+
+    seriesList.forEach(series => {
+        (Array.isArray(series.collections) ? series.collections : []).forEach(collection => {
+            if (!all.some(existing =>
+                existing.toLowerCase() === collection.toLowerCase()
+            )) {
+                all.push(collection);
+            }
+        });
+    });
+
+    all.sort((a,b) =>
+        a.localeCompare(b, undefined, {sensitivity:"base"})
+    );
+
+    const allBtn = document.createElement("button");
+    allBtn.className =
+        "collection-filter" +
+        (activeCollectionFilter === null ? " active" : "");
+    allBtn.textContent = "All collections";
+    allBtn.onclick = () => {
+        activeCollectionFilter = null;
+        renderLibrary(document.getElementById("search").value);
+    };
+    container.appendChild(allBtn);
+
+    /* Favorites is a built-in collection and is managed
+       automatically by the favorite button. */
+    const favoritesBtn = document.createElement("button");
+    favoritesBtn.className =
+        "collection-filter" +
+        (activeCollectionFilter === "__favorites__" ? " active" : "");
+    favoritesBtn.textContent = "★ Favorites";
+    favoritesBtn.onclick = () => {
+        activeCollectionFilter = "__favorites__";
+        renderLibrary(document.getElementById("search").value);
+    };
+    container.appendChild(favoritesBtn);
+
+    /* Custom collections */
+    all.forEach(collectionName => {
+
+        /* Do not display a duplicate custom Favorites collection. */
+        if (collectionName.toLowerCase() === "favorites") {
+            return;
+        }
+
+        const item = document.createElement("div");
+        item.className = "collection-item";
+
+        const filterButton = document.createElement("button");
+        filterButton.className =
+            "collection-filter" +
+            (
+                activeCollectionFilter &&
+                activeCollectionFilter.toLowerCase() ===
+                collectionName.toLowerCase()
+                ? " active"
+                : ""
+            );
+        filterButton.textContent = collectionName;
+
+        filterButton.onclick = () => {
+            activeCollectionFilter = collectionName;
+            renderLibrary(document.getElementById("search").value);
+        };
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "collection-delete";
+        deleteButton.textContent = "×";
+        deleteButton.title = "Delete collection";
+
+        deleteButton.onclick = async event => {
+            event.stopPropagation();
+
+            const confirmed = confirm(
+                `Delete the collection "${collectionName}"?\n\n` +
+                "The stories will NOT be deleted. " +
+                "Only this collection will be removed from them."
+            );
+
+            if (!confirmed) return;
+
+            const currentSeries = await dbGetAll("series");
+
+            for (const series of currentSeries) {
+                const collections = Array.isArray(series.collections)
+                    ? series.collections
+                    : [];
+
+                const filteredCollections = collections.filter(
+                    c =>
+                        c.toLowerCase() !==
+                        collectionName.toLowerCase()
+                );
+
+                if (filteredCollections.length !== collections.length) {
+                    series.collections = filteredCollections;
+                    await dbPut("series", series);
+                }
+            }
+
+            if (
+                activeCollectionFilter &&
+                activeCollectionFilter.toLowerCase() ===
+                collectionName.toLowerCase()
+            ) {
+                activeCollectionFilter = null;
+            }
+
+            await renderLibrary(
+                document.getElementById("search").value
+            );
+        };
+
+        item.appendChild(filterButton);
+        item.appendChild(deleteButton);
+        container.appendChild(item);
+    });
+
+    const add = document.createElement("button");
+    add.className = "collection-add";
+    add.textContent = "+ Collection";
+    add.onclick = () => {
+        const nameInput = prompt("Collection name:");
+        if (!nameInput || !nameInput.trim()) return;
+
+        const name = nameInput.trim();
+
+        if (
+            name.toLowerCase() === "favorites"
+        ) {
+            alert(
+                "Favorites is a built-in collection and cannot be created manually."
+            );
+            return;
+        }
+
+        if (
+            all.some(
+                existing =>
+                    existing.toLowerCase() ===
+                    name.toLowerCase()
+            )
+        ) {
+            alert("This collection already exists.");
+            return;
+        }
+
+        alert(
+            "Collection created. Assign it to a story from Edit Story."
+        );
+    };
+    container.appendChild(add);
+}
+
+/* =========================================================
+   RENDER TAG FILTERS
+========================================================= */
+
+async function renderTagFilters() {
+
+    const container =
+        document.getElementById(
+            "tagsBar"
+        );
+
+    container.innerHTML = "";
+
+    const seriesList =
+        await dbGetAll(
+            "series"
+        );
+
+    const allTags = [];
+
+    seriesList.forEach(
+        series => {
+
+            const tags =
+                Array.isArray(
+                    series.tags
+                )
+                ? series.tags
+                : [];
+
+            tags.forEach(
+                tag => {
+
+                    if (
+                        !allTags.some(
+                            existing =>
+                                existing.toLowerCase() ===
+                                tag.toLowerCase()
+                        )
+                    ) {
+
+                        allTags.push(tag);
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+    allTags.sort(
+        (a,b) =>
+            a.localeCompare(
+                b,
+                undefined,
+                {
+                    sensitivity: "base"
+                }
+            )
+    );
+
+
+    if (
+        allTags.length === 0
+    ) {
+
+        return;
+
+    }
+
+
+    const allButton =
+        document.createElement(
+            "button"
+        );
+
+    allButton.className =
+        "tag-filter" +
+        (
+            activeTagFilter === null
+            ? " active"
+            : ""
+        );
+
+    allButton.textContent =
+        "All";
+
+    allButton.onclick =
+        () => {
+
+            activeTagFilter =
+                null;
+
+            renderLibrary();
+
+        };
+
+    container.appendChild(
+        allButton
+    );
+
+
+    allTags.forEach(
+        tag => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+            button.className =
+                "tag-filter" +
+                (
+                    activeTagFilter &&
+                    activeTagFilter.toLowerCase() ===
+                    tag.toLowerCase()
+                    ? " active"
+                    : ""
+                );
+
+            button.textContent =
+                tag;
+
+            button.onclick =
+                () => {
+
+                    activeTagFilter =
+                        tag;
+
+                    renderLibrary();
+
+                };
+
+            container.appendChild(
+                button
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   LIBRARY
+========================================================= */
+
+async function renderLibrary(
+    filter = ""
+) {
+
+    const library =
+        document.getElementById(
+            "library"
+        );
+
+    library.innerHTML = "";
+
+
+    let seriesList =
+        await dbGetAll(
+            "series"
+        );
+
+
+    /* Preserve old stories that did
+       not have the new order field. */
+
+    seriesList.forEach(
+        (series, index) => {
+
+            if (
+                typeof series.order !==
+                "number"
+            ) {
+
+                series.order =
+                    index;
+
+                dbPut(
+                    "series",
+                    series
+                );
+
+            }
+
+        }
+    );
+
+
+    seriesList.sort(
+        (a,b) =>
+            (
+                a.order ?? 0
+            ) -
+            (
+                b.order ?? 0
+            )
+    );
+
+
+    const searchValue =
+        filter.toLowerCase();
+
+
+    const filtered =
+        seriesList.filter(
+            series => {
+
+                const titleMatches =
+                    series.title
+                        .toLowerCase()
+                        .includes(
+                            searchValue
+                        );
+
+                const tags =
+                    Array.isArray(
+                        series.tags
+                    )
+                    ? series.tags
+                    : [];
+
+                const tagMatches =
+                    activeTagFilter === null ||
+                    tags.some(
+                        tag =>
+                            tag.toLowerCase() ===
+                            activeTagFilter.toLowerCase()
+                    );
+
+                const collections = Array.isArray(series.collections) ? series.collections : [];
+                const collectionMatches = activeCollectionFilter === null || (activeCollectionFilter === "__favorites__" ? !!series.favorite : collections.some(c => c.toLowerCase() === activeCollectionFilter.toLowerCase()));
+
+                return (
+                    titleMatches &&
+                    tagMatches &&
+                    collectionMatches
+                );
+
+            }
+        );
+
+
+    if (
+        filtered.length === 0
+    ) {
+
+        library.innerHTML = `
+
+            <div class="empty">
+
+                <h2>
+                    No stories found
+                </h2>
+
+            </div>
+
+        `;
+
+        await renderTagFilters();
+        await renderCollectionFilters();
+    
+        applyMosaic();
+
+        return;
+
+    }
+
+
+    for (
+        const series of filtered
+    ) {
+
+        const chapters =
+            await getChapters(
+                series.id
+            );
+
+
+        const card =
+            document.createElement(
+                "div"
+            );
+
+        card.className =
+            "card";
+
+        card.dataset.seriesId =
+            series.id;
+
+
+        if (
+            !customOrderMode
+        ) {
+
+            card.onclick =
+                () =>
+                    openSeries(
+                        series.id
+                    );
+
+        }
+
+
+        let coverURL;
+
+
+        if (series.cover) {
+
+            coverURL =
+                URL.createObjectURL(
+                    series.cover
+                );
+
+        } else {
+
+            coverURL =
+                placeholder();
+
+        }
+
+
+        const tags =
+            Array.isArray(
+                series.tags
+            )
+            ? series.tags
+            : [];
+
+
+        const tagsHTML =
+            tags.length
+            ? `
+
+                <div class="card-tags">
+
+                    ${tags
+                        .map(
+                            tag =>
+                                `<span class="card-tag">
+                                    ${escapeHTML(tag)}
+                                </span>`
+                        )
+                        .join("")
+                    }
+
+                </div>
+
+            `
+            : "";
+
+
+        card.innerHTML = `
+
+            <img
+                class="cover"
+                src="${coverURL}"
+                alt=""
+            >
+
+            ${
+                series.favorite
+                ? `
+                    <div class="favorite-badge">
+                        ★
+                    </div>
+                `
+                : ""
+            }
+
+            <div class="card-info">
+
+                <div class="card-title">
+                    ${escapeHTML(
+                        series.title
+                    )}
+                </div>
+
+                <div class="card-chapters">
+                    ${chapters.length}
+                    chapter(s)
+                </div>
+
+                <div class="status-badge">${escapeHTML(series.status || "Reading")}</div>
+
+                ${
+                    series.lastChapterId !== null &&
+                    series.lastChapterId !== undefined &&
+                    chapters.length > 0
+                    ? (() => {
+                        const ordered = [...chapters].sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+                        const currentIndex = ordered.findIndex(c => c.id === series.lastChapterId);
+                        if (currentIndex < 0) return "";
+                        const chapterPct = Math.max(0, Math.min(100, Number(series.chapterProgress ?? 0)));
+                        const overall = Math.max(0, Math.min(100, ((currentIndex + chapterPct / 100) / ordered.length) * 100));
+                        return `
+                            <span class="story-progress-tag">
+                                ${Math.round(overall)}% read
+                            </span>
+                        `;
+                    })()
+                    : ""
+                }
+
+                ${tagsHTML}
+
+                <button
+                    class="small-button card-edit-button"
+                    type="button"
+                    onclick="event.stopPropagation(); editStoryFromCard(${series.id});"
+                >
+                    ✏ Edit
+                </button>
+
+            </div>
+
+        `;
+
+        const continueButton = card.querySelector(".story-continue-button");
+        if (continueButton) {
+            continueButton.addEventListener("click", async (event) => {
+                event.stopPropagation();
+                currentSeriesId = series.id;
+                await openChapter(Number(continueButton.dataset.continueId), true);
+            });
+        }
+
+
+        if (
+            customOrderMode
+        ) {
+
+            card.draggable =
+                true;
+
+            card.style.cursor =
+                "grab";
+
+            card.addEventListener(
+                "dragstart",
+                handleDragStart
+            );
+
+            card.addEventListener(
+                "dragover",
+                handleDragOver
+            );
+
+            card.addEventListener(
+                "drop",
+                handleDrop
+            );
+
+            card.addEventListener(
+                "dragend",
+                handleDragEnd
+            );
+
+        }
+
+
+        library.appendChild(
+            card
+        );
+
+    }
+
+
+    await renderTagFilters();
+    await renderCollectionFilters();
+
+    applyMosaic();
+
+}
+
+
+/* =========================================================
+   DRAG ORDER
+========================================================= */
+
+let draggedCard = null;
+
+
+function handleDragStart(event) {
+
+    draggedCard =
+        event.currentTarget;
+
+    event.currentTarget.style.opacity =
+        "0.5";
+
+    event.dataTransfer.effectAllowed =
+        "move";
+
+}
+
+
+function handleDragOver(event) {
+
+    event.preventDefault();
+
+    const target =
+        event.currentTarget;
+
+    if (
+        !draggedCard ||
+        target === draggedCard
+    ) {
+
+        return;
+
+    }
+
+    const rect =
+        target.getBoundingClientRect();
+
+    const after =
+        event.clientY >
+        rect.top +
+        rect.height / 2;
+
+    const parent =
+        target.parentNode;
+
+    if (after) {
+
+        parent.insertBefore(
+            draggedCard,
+            target.nextSibling
+        );
+
+    } else {
+
+        parent.insertBefore(
+            draggedCard,
+            target
+        );
+
+    }
+
+}
+
+
+function handleDrop(event) {
+
+    event.preventDefault();
+
+}
+
+
+function handleDragEnd(event) {
+
+    event.currentTarget.style.opacity =
+        "1";
+
+    draggedCard =
+        null;
+
+}
+
+
+/* =========================================================
+   SERIES MODAL
+========================================================= */
+
+window.openSeriesModal =
+function() {
+
+    // Always open the New Story modal from the HOME page.
+    // This makes the button work even if the user was on
+    // the story page or reader.
+
+    const home = document.getElementById("home");
+    const seriesPage = document.getElementById("seriesPage");
+    const reader = document.getElementById("reader");
+    const header = document.getElementById("mainHeader");
+    const modal = document.getElementById("seriesModal");
+
+    if (home) home.style.display = "block";
+    if (seriesPage) seriesPage.style.display = "none";
+    if (reader) reader.style.display = "none";
+    if (header) header.style.display = "flex";
+
+    selectedNewTags = [];
+    renderSelectedTags("new");
+
+    // Reset the form every time the button is opened.
+    document.getElementById("newTitle").value = "";
+    document.getElementById("newDescription").value = "";
+    document.getElementById("newCover").value = "";
+
+    // Open the modal immediately in the current viewport.
+    modal.classList.add("active");
+    modal.style.display = "flex";
+
+    // Put the page at the home position so the modal is visible
+    // exactly when the Home button is clicked.
+    window.scrollTo({
+        top: 0,
+        behavior: "auto"
+    });
+
+    requestAnimationFrame(() => {
+        document.getElementById("newTitle").focus();
+    });
+
+};
+
+
+window.closeSeriesModal =
+function() {
+
+    const modal = document.getElementById("seriesModal");
+    modal.classList.remove("active");
+    modal.style.display = "none";
+
+};
+
+
+/* =========================================================
+   CREATE SERIES
+========================================================= */
+
+window.createSeries =
+async function() {
+
+    const title =
+        document.getElementById(
+            "newTitle"
+        ).value.trim();
+
+
+    const description =
+        document.getElementById(
+            "newDescription"
+        ).value.trim();
+
+
+    const cover =
+        document.getElementById(
+            "newCover"
+        ).files[0] || null;
+
+
+    if (!title) {
+
+        alert(
+            "Enter the story name."
+        );
+
+        return;
+
+    }
+
+
+    const existing =
+        await dbGetAll(
+            "series"
+        );
+
+
+    await dbAdd(
+        "series",
+        {
+
+            title,
+
+            description,
+
+            cover,
+
+            tags:
+                [...selectedNewTags],
+
+            collections:
+                document.getElementById("newCollectionsInput").value.split(",").map(x => x.trim()).filter(Boolean),
+
+            status:
+                document.getElementById("newStatus").value,
+
+            favorite:
+                false,
+
+            lastChapterId:
+                null,
+
+            lastScroll:
+                0,
+
+            order:
+                existing.length,
+
+            createdAt:
+                Date.now()
+
+        }
+    );
+
+
+    document.getElementById(
+        "newTitle"
+    ).value = "";
+
+
+    document.getElementById(
+        "newDescription"
+    ).value = "";
+
+
+    document.getElementById(
+        "newCover"
+    ).value = "";
+    document.getElementById("newCollectionsInput").value = "";
+    document.getElementById("newStatus").value = "Reading";
+
+
+    selectedNewTags =
+        [];
+
+    renderSelectedTags(
+        "new"
+    );
+
+
+    closeSeriesModal();
+
+
+    await renderLibrary();
+
+};
+
+
+window.editStoryFromCard = async function(seriesId) {
+    currentSeriesId = seriesId;
+    await openEditSeriesModal();
+};
+
+
+/* =========================================================
+   OPEN SERIES
+========================================================= */
+
+async function openSeries(
+    seriesId
+) {
+
+    currentSeriesId =
+        seriesId;
+
+
+    const series =
+        await dbGet(
+            "series",
+            seriesId
+        );
+
+
+    document.getElementById(
+        "home"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "mainHeader"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "seriesPage"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "seriesTitle"
+    ).textContent =
+        series.title;
+
+
+    document.getElementById(
+        "seriesDescription"
+    ).textContent =
+        series.description || "";
+
+
+    const tagsContainer =
+        document.getElementById(
+            "seriesTags"
+        );
+
+    tagsContainer.innerHTML = "";
+
+
+    const tags =
+        Array.isArray(
+            series.tags
+        )
+        ? series.tags
+        : [];
+
+
+    tags.forEach(
+        tag => {
+
+            const element =
+                document.createElement(
+                    "span"
+                );
+
+            element.className =
+                "series-tag";
+
+            element.textContent =
+                tag;
+
+            tagsContainer.appendChild(
+                element
+            );
+
+        }
+    );
+
+
+    const collectionsContainer = document.getElementById("seriesCollections");
+    collectionsContainer.innerHTML = "";
+    (Array.isArray(series.collections) ? series.collections : []).forEach(c => { const e=document.createElement("span"); e.className="series-tag"; e.textContent=c; collectionsContainer.appendChild(e); });
+    document.getElementById("seriesStatus").textContent = series.status || "Reading";
+
+    const cover =
+        document.getElementById(
+            "seriesCover"
+        );
+
+
+    if (series.cover) {
+
+        cover.src =
+            URL.createObjectURL(
+                series.cover
+            );
+
+    } else {
+
+        cover.src =
+            placeholder();
+
+    }
+
+
+    updateFavoriteButton(
+        !!series.favorite
+    );
+
+
+    await renderChapters();
+
+}
+
+
+/* =========================================================
+   FAVORITES
+========================================================= */
+
+function updateFavoriteButton(
+    isFavorite
+) {
+
+    const button =
+        document.getElementById(
+            "favoriteButton"
+        );
+
+
+    if (!button)
+        return;
+
+
+    if (isFavorite) {
+
+        button.textContent =
+            "★ In my favorites";
+
+        button.classList.remove(
+            "not-favorite"
+        );
+
+    } else {
+
+        button.textContent =
+            "☆ Add to favorites";
+
+        button.classList.add(
+            "not-favorite"
+        );
+
+    }
+
+}
+
+
+window.toggleFavorite =
+async function() {
+
+    if (
+        currentSeriesId === null
+    )
+        return;
+
+
+    const series =
+        await dbGet(
+            "series",
+            currentSeriesId
+        );
+
+
+    if (!series)
+        return;
+
+
+    series.favorite =
+        !series.favorite;
+
+    const favoriteCollections =
+        Array.isArray(series.collections)
+            ? [...series.collections]
+            : [];
+
+    const favoriteIndex =
+        favoriteCollections.findIndex(
+            c => c.toLowerCase() === "favorites"
+        );
+
+    if (series.favorite && favoriteIndex === -1) {
+        favoriteCollections.push("Favorites");
+    }
+
+    if (!series.favorite && favoriteIndex !== -1) {
+        favoriteCollections.splice(favoriteIndex, 1);
+    }
+
+    series.collections = favoriteCollections;
+
+    await dbPut(
+        "series",
+        series
+    );
+
+
+    updateFavoriteButton(
+        series.favorite
+    );
+
+
+    await renderLibrary();
+
+};
+
+
+/* =========================================================
+   CHAPTER LIST
+========================================================= */
+
+async function renderChapters() {
+
+    const list =
+        document.getElementById(
+            "chapterList"
+        );
+
+    list.innerHTML = "";
+
+
+    const chapters =
+        await getChapters(
+            currentSeriesId
+        );
+
+
+    chapters.sort((a, b) => {
+
+        const aMatch = a.title.match(/\d+/);
+        const bMatch = b.title.match(/\d+/);
+
+        const aNumber = aMatch
+            ? parseInt(aMatch[0], 10)
+            : Infinity;
+
+        const bNumber = bMatch
+            ? parseInt(bMatch[0], 10)
+            : Infinity;
+
+        if (aNumber !== bNumber) {
+            return aNumber - bNumber;
+        }
+
+        return a.title.localeCompare(
+            b.title,
+            undefined,
+            {
+                numeric: true,
+                sensitivity: "base"
+            }
+        );
+
+    });
+
+
+    if (
+        chapters.length === 0
+    ) {
+
+        list.innerHTML = `
+
+            <div
+                style="
+                    color:#777;
+                    padding:20px 0;
+                "
+            >
+                No chapters yet.
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    chapters.forEach(
+        chapter => {
+
+            const element =
+                document.createElement(
+                    "div"
+                );
+
+            element.className =
+                "chapter";
+
+
+            const typeLabel =
+                chapter.type === "pdf"
+                ? "📄 PDF"
+                : "🖼️ Images";
+
+
+            const count =
+                chapter.type === "pdf"
+                ? "PDF document"
+                : `${chapter.images.length} page(s)`;
+
+
+            element.innerHTML = `
+
+                <div class="chapter-left">
+
+                    <div class="chapter-title">
+
+                        ${escapeHTML(
+                            chapter.title
+                        )}
+
+                    </div>
+
+                    <div class="chapter-info">
+
+                        ${typeLabel}
+                        ·
+                        ${count}
+
+                    </div>
+
+                </div>
+
+
+                <div class="chapter-actions">
+
+                    <button
+                        class="small-button"
+                        onclick="
+                            event.stopPropagation();
+                            openChapter(${chapter.id});
+                        "
+                    >
+                        Read
+                    </button>
+
+
+                    <button
+                        class="small-button chapter-edit-button"
+                        onclick="
+                            event.stopPropagation();
+                            editChapter(${chapter.id});
+                        "
+                    >
+                        ✏ Edit
+                    </button>
+
+                    <button
+                        class="small-button"
+                        onclick="
+                            event.stopPropagation();
+                            deleteChapter(${chapter.id});
+                        "
+                    >
+                        🗑
+                    </button>
+
+                </div>
+
+            `;
+
+
+            element.addEventListener(
+                "click",
+                () =>
+                    openChapter(
+                        chapter.id
+                    )
+            );
+
+
+            list.appendChild(
+                element
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   CHAPTER MODAL
+========================================================= */
+
+window.openChapterModal =
+function() {
+
+    document
+        .getElementById(
+            "chapterModal"
+        )
+        .classList.add(
+            "active"
+        );
+
+
+    selectContentType(
+        "images"
+    );
+
+
+    document.getElementById(
+        "chapterStatus"
+    ).innerHTML = "";
+
+};
+
+
+window.closeChapterModal =
+function() {
+
+    document
+        .getElementById(
+            "chapterModal"
+        )
+        .classList.remove(
+            "active"
+        );
+
+};
+
+
+/* =========================================================
+   CONTENT TYPE
+========================================================= */
+
+window.selectContentType =
+function(type) {
+
+    const imagesButton =
+        document.getElementById(
+            "imagesChoice"
+        );
+
+    const pdfButton =
+        document.getElementById(
+            "pdfChoice"
+        );
+
+    const imagesUpload =
+        document.getElementById(
+            "imagesUpload"
+        );
+
+    const pdfUpload =
+        document.getElementById(
+            "pdfUpload"
+        );
+
+
+    if (type === "images") {
+
+        imagesButton.classList.add(
+            "active"
+        );
+
+        pdfButton.classList.remove(
+            "active"
+        );
+
+        imagesUpload.classList.add(
+            "active"
+        );
+
+        pdfUpload.classList.remove(
+            "active"
+        );
+
+        currentChapterType =
+            "images";
+
+    } else {
+
+        pdfButton.classList.add(
+            "active"
+        );
+
+        imagesButton.classList.remove(
+            "active"
+        );
+
+        pdfUpload.classList.add(
+            "active"
+        );
+
+        imagesUpload.classList.remove(
+            "active"
+        );
+
+        currentChapterType =
+            "pdf";
+
+    }
+
+};
+
+
+/* =========================================================
+   SELECTED FILES
+========================================================= */
+
+window.showSelectedFiles =
+function() {
+
+    const input =
+        document.getElementById(
+            "chapterImages"
+        );
+
+    const display =
+        document.getElementById(
+            "selectedFiles"
+        );
+
+
+    const files =
+        Array.from(
+            input.files
+        );
+
+
+    if (
+        files.length === 0
+    ) {
+
+        display.style.display =
+            "none";
+
+        return;
+
+    }
+
+
+    display.style.display =
+        "block";
+
+
+    display.innerHTML = `
+
+        <div class="file-count">
+
+            ${files.length}
+            image(s) selected
+
+        </div>
+
+    `;
+
+
+    files
+        .slice(0,100)
+        .forEach(
+            (file,index) => {
+
+                display.innerHTML += `
+
+                    ${index + 1}.
+                    ${escapeHTML(
+                        file.name
+                    )}
+
+                    <br>
+
+                `;
+
+            }
+        );
+
+
+    if (
+        files.length > 100
+    ) {
+
+        display.innerHTML += `
+
+            <br>
+            ...
+            ${files.length - 100}
+            more.
+
+        `;
+
+    }
+
+};
+
+
+/* =========================================================
+   PDF SELECTED
+========================================================= */
+
+window.showSelectedPDF =
+function() {
+
+    const input =
+        document.getElementById(
+            "chapterPDF"
+        );
+
+    const display =
+        document.getElementById(
+            "selectedPDF"
+        );
+
+
+    const file =
+        input.files[0];
+
+
+    if (!file) {
+
+        display.style.display =
+            "none";
+
+        return;
+
+    }
+
+
+    display.style.display =
+        "block";
+
+
+    const sizeMB =
+        (
+            file.size /
+            (1024 * 1024)
+        ).toFixed(2);
+
+
+    display.innerHTML = `
+
+        <div class="file-count">
+
+            📄 PDF selected
+
+        </div>
+
+        ${escapeHTML(file.name)}
+
+        <br>
+
+        ${sizeMB} MB
+
+    `;
+
+};
+
+
+/* =========================================================
+   SORT IMAGES
+   SORT BY THE FIRST NUMBER IN THE FILENAME
+========================================================= */
+
+function sortImages(files) {
+
+    return Array
+        .from(files)
+        .sort((a, b) => {
+
+            /*
+             * Example:
+             *
+             * imgi_1_0c3e2fa34a29944c330a4ca56f279ae4
+             * imgi_8_270348_42975212
+             * imgi_7_270348_42975211
+             *
+             * We extract:
+             *
+             * 1
+             * 8
+             * 7
+             *
+             * NOT the numbers at the end.
+             */
+
+            const aMatch =
+                a.name.match(
+                    /^imgi_(\d+)/
+                );
+
+            const bMatch =
+                b.name.match(
+                    /^imgi_(\d+)/
+                );
+
+
+            /*
+             * If both filenames follow
+             * the imgi_NUMBER format
+             */
+
+            if (aMatch && bMatch) {
+
+                const aNumber =
+                    parseInt(
+                        aMatch[1],
+                        10
+                    );
+
+                const bNumber =
+                    parseInt(
+                        bMatch[1],
+                        10
+                    );
+
+
+                if (
+                    aNumber !== bNumber
+                ) {
+
+                    return (
+                        aNumber -
+                        bNumber
+                    );
+
+                }
+
+
+                /*
+                 * If two files have the same
+                 * number, use the full filename
+                 * as a secondary sort.
+                 */
+
+                return a.name.localeCompare(
+                    b.name,
+                    undefined,
+                    {
+                        numeric: true,
+                        sensitivity: "base"
+                    }
+                );
+
+            }
+
+
+            /*
+             * Files that do not follow
+             * the imgi_NUMBER format
+             */
+
+            if (aMatch && !bMatch)
+                return -1;
+
+            if (!aMatch && bMatch)
+                return 1;
+
+
+            /*
+             * If neither filename follows
+             * the format, use natural filename sorting.
+             */
+
+            return a.name.localeCompare(
+                b.name,
+                undefined,
+                {
+                    numeric: true,
+                    sensitivity: "base"
+                }
+            );
+
+        });
+
+}
+
+/* =========================================================
+   CREATE CHAPTER
+========================================================= */
+
+window.createChapter =
+async function() {
+
+    const title =
+        document.getElementById(
+            "chapterTitle"
+        ).value.trim();
+
+
+    const status =
+        document.getElementById(
+            "chapterStatus"
+        );
+
+
+    const button =
+        document.getElementById(
+            "createChapterButton"
+        );
+
+
+    if (!title) {
+
+        alert(
+            "Enter the chapter name."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            "Creating...";
+
+
+        if (
+            currentChapterType ===
+            "pdf"
+        ) {
+
+            const pdf =
+                document.getElementById(
+                    "chapterPDF"
+                ).files[0];
+
+
+            if (!pdf) {
+
+                alert(
+                    "Select a PDF."
+                );
+
+                button.disabled =
+                    false;
+
+                button.textContent =
+                    "Create Chapter";
+
+                return;
+
+            }
+
+
+            status.innerHTML = `
+
+                <div class="loading">
+
+                    Saving PDF...
+
+                </div>
+
+            `;
+
+
+            const existing =
+                await getChapters(
+                    currentSeriesId
+                );
+
+
+            await dbAdd(
+                "chapters",
+                {
+
+                    seriesId:
+                        currentSeriesId,
+
+                    title:
+                        title,
+
+                    type:
+                        "pdf",
+
+                    pdf:
+                        pdf,
+
+                    images:
+                        [],
+
+                    order:
+                        existing.length + 1,
+
+                    createdAt:
+                        Date.now()
+
+                }
+            );
+
+
+            status.innerHTML = `
+
+                <div class="success">
+
+                    ✓ PDF saved!
+
+                </div>
+
+            `;
+
+        }
+
+        else {
+
+            const input =
+                document.getElementById(
+                    "chapterImages"
+                );
+
+
+            const files =
+                Array.from(
+                    input.files
+                );
+
+
+            if (
+                files.length === 0
+            ) {
+
+                alert(
+                    "Select at least one image."
+                );
+
+                button.disabled =
+                    false;
+
+                button.textContent =
+                    "Create Chapter";
+
+                return;
+
+            }
+
+
+            const sortedFiles =
+                sortImages(
+                    files
+                );
+
+
+            const images = [];
+
+
+            for (
+                let i = 0;
+                i < sortedFiles.length;
+                i++
+            ) {
+
+                images.push({
+
+                    name:
+                        sortedFiles[i].name,
+
+                    blob:
+                        sortedFiles[i]
+
+                });
+
+
+                status.innerHTML = `
+
+                    <div class="loading">
+
+                        Importing:
+                        ${i + 1}
+                        /
+                        ${sortedFiles.length}
+
+                    </div>
+
+                `;
+
+
+                if (
+                    i % 10 === 0
+                ) {
+
+                    await new Promise(
+                        resolve =>
+                            setTimeout(
+                                resolve,
+                                0
+                            )
+                    );
+
+                }
+
+            }
+
+
+            const existing =
+                await getChapters(
+                    currentSeriesId
+                );
+
+
+            await dbAdd(
+                "chapters",
+                {
+
+                    seriesId:
+                        currentSeriesId,
+
+                    title:
+                        title,
+
+                    type:
+                        "images",
+
+                    images:
+                        images,
+
+                    pdf:
+                        null,
+
+                    order:
+                        existing.length + 1,
+
+                    createdAt:
+                        Date.now()
+
+                }
+            );
+
+
+            status.innerHTML = `
+
+                <div class="success">
+
+                    ✓ Chapter created with
+                    ${images.length}
+                    image(s)!
+
+                </div>
+
+            `;
+
+        }
+
+
+        document.getElementById(
+            "chapterTitle"
+        ).value = "";
+
+
+        document.getElementById(
+            "chapterImages"
+        ).value = "";
+
+
+        document.getElementById(
+            "chapterPDF"
+        ).value = "";
+
+
+        document.getElementById(
+            "selectedFiles"
+        ).style.display =
+            "none";
+
+
+        document.getElementById(
+            "selectedPDF"
+        ).style.display =
+            "none";
+
+
+        await renderChapters();
+
+
+        setTimeout(
+            () => {
+
+                closeChapterModal();
+
+                button.disabled =
+                    false;
+
+                button.textContent =
+                    "Create Chapter";
+
+                status.innerHTML =
+                    "";
+
+            },
+            800
+        );
+
+
+    } catch(error) {
+
+        console.error(
+            error
+        );
+
+
+        status.innerHTML = `
+
+            <div class="error">
+
+                Error:
+                ${escapeHTML(
+                    error.message
+                )}
+
+            </div>
+
+        `;
+
+
+        button.disabled =
+            false;
+
+        button.textContent =
+            "Create Chapter";
+
+    }
+
+};
+
+
+/* =========================================================
+   ZOOM
+========================================================= */
+
+function applyReaderZoom() {
+
+    const container =
+        document.getElementById(
+            "readerImages"
+        );
+
+
+    if (!container)
+        return;
+
+
+    container.style.transform =
+        `scale(${readerZoom})`;
+
+
+    container.style.transformOrigin =
+        "top center";
+
+
+    if (
+        readerZoom > 1
+    ) {
+
+        container.style.marginBottom =
+            `${(readerZoom - 1) * 100}px`;
+
+    } else {
+
+        container.style.marginBottom =
+            "0";
+
+    }
+
+
+    document.getElementById(
+        "zoomLevel"
+    ).textContent =
+        Math.round(
+            readerZoom * 100
+        ) + "%";
+
+}
+
+
+window.zoomIn =
+function() {
+
+    readerZoom =
+        Math.min(
+            MAX_ZOOM,
+            Math.round(
+                (
+                    readerZoom +
+                    ZOOM_STEP
+                ) * 10
+            ) / 10
+        );
+
+
+    applyReaderZoom();
+
+};
+
+
+window.zoomOut =
+function() {
+
+    readerZoom =
+        Math.max(
+            MIN_ZOOM,
+            Math.round(
+                (
+                    readerZoom -
+                    ZOOM_STEP
+                ) * 10
+            ) / 10
+        );
+
+
+    applyReaderZoom();
+
+};
+
+
+window.resetZoom =
+function() {
+
+    readerZoom =
+        1;
+
+    applyReaderZoom();
+
+};
+
+
+/* =========================================================
+   CTRL + WHEEL
+========================================================= */
+
+document.addEventListener(
+    "wheel",
+    function(event) {
+
+        const reader =
+            document.getElementById(
+                "reader"
+            );
+
+
+        if (
+            reader.style.display !==
+            "block"
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            event.ctrlKey
+        ) {
+
+            event.preventDefault();
+
+
+            if (
+                event.deltaY < 0
+            ) {
+
+                zoomIn();
+
+            } else {
+
+                zoomOut();
+
+            }
+
+        }
+
+    },
+    {
+        passive: false
+    }
+);
+
+/* =========================================================
+   READING MODES
+========================================================= */
+window.setReadingMode = function(mode) { readingMode = mode; updateReadingMode(); };
+window.toggleReadingMode = function() { const m=["vertical","single","double"]; readingMode=m[(m.indexOf(readingMode)+1)%m.length]; updateReadingMode(); };
+function updateReadingMode() {
+    const reader=document.getElementById("readerImages"), controls=document.getElementById("singlePageControls"); if(!reader)return;
+    ["verticalModeButton","singleModeButton","doubleModeButton"].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove("active")});
+    const active=document.getElementById(readingMode==="vertical"?"verticalModeButton":readingMode==="single"?"singleModeButton":"doubleModeButton"); if(active)active.classList.add("active");
+    reader.classList.remove("double-page");
+    if(readingMode==="vertical"){controls.style.display="none";Array.from(reader.children).forEach(e=>e.style.display="");}
+    else if(readingMode==="single"){controls.style.display="flex";currentPageIndex=Math.min(currentPageIndex,Math.max(0,reader.children.length-1));showSinglePage();}
+    else{controls.style.display="flex";currentDoubleIndex=Math.floor(currentPageIndex/2)*2;showDoublePage();}
+    applyReaderZoom();
+}
+function showSinglePage(){const pages=Array.from(document.getElementById("readerImages").children);pages.forEach((p,i)=>p.style.display=i===currentPageIndex?"":"none");document.getElementById("pageCounter").textContent=`Page ${Math.min(currentPageIndex+1,pages.length)} / ${pages.length}`;updateSinglePageButtons();window.scrollTo(0,0);}
+function showDoublePage(){const r=document.getElementById("readerImages"),pages=Array.from(r.children);r.classList.add("double-page");pages.forEach((p,i)=>p.style.display=(i===currentDoubleIndex||i===currentDoubleIndex+1)?"":"none");document.getElementById("pageCounter").textContent=`Pages ${Math.min(currentDoubleIndex+1,pages.length)}${currentDoubleIndex+1<pages.length?"–"+(currentDoubleIndex+2):""} / ${pages.length}`;updateSinglePageButtons();window.scrollTo(0,0);}
+function updateSinglePageButtons(){const b=document.getElementById("singlePageControls")?.querySelectorAll("button"),total=document.getElementById("readerImages").children.length,pos=readingMode==="double"?currentDoubleIndex:currentPageIndex;if(!b||b.length<2)return;b[0].disabled=pos<=0;b[1].disabled=pos>=total-1;}
+window.previousPage=function(){if(readingMode==="double"){currentDoubleIndex=Math.max(0,currentDoubleIndex-2);currentPageIndex=currentDoubleIndex;showDoublePage();}else{if(currentPageIndex<=0)return;currentPageIndex--;showSinglePage();}};
+window.nextPage=function(){const total=document.getElementById("readerImages").children.length;if(readingMode==="double"){if(currentDoubleIndex+1>=total-1)return;currentDoubleIndex+=2;currentPageIndex=currentDoubleIndex;showDoublePage();}else{if(currentPageIndex>=total-1)return;currentPageIndex++;showSinglePage();}};
+window.previousChapter=async function(){if(currentSeriesId===null)return;const c=await getChapters(currentSeriesId);c.sort((a,b)=>(a.order??0)-(b.order??0));const i=c.findIndex(x=>x.id===currentChapterId);if(i>0)await openChapter(c[i-1].id,false);};
+window.nextChapter=async function(){if(currentSeriesId===null)return;const c=await getChapters(currentSeriesId);c.sort((a,b)=>(a.order??0)-(b.order??0));const i=c.findIndex(x=>x.id===currentChapterId);if(i>=0&&i<c.length-1)await openChapter(c[i+1].id,false);};
+
+/* =========================================================
+   OPEN CHAPTER
+========================================================= */
+
+window.openChapter =
+async function(
+    chapterId,
+    restorePosition = true
+) {
+
+    const chapter =
+        await dbGet(
+            "chapters",
+            chapterId
+        );
+
+
+    if (!chapter) {
+
+        alert(
+            "Chapter not found."
+        );
+
+        return;
+
+    }
+
+
+    currentChapterId =
+        chapterId;
+
+
+    currentChapterType =
+        chapter.type ||
+        (
+            chapter.pdf
+            ? "pdf"
+            : "images"
+        );
+
+
+    readerZoom =
+        1;
+
+
+    document.getElementById(
+        "seriesPage"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "reader"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "readerTitle"
+    ).textContent =
+        chapter.title;
+
+
+    const reader =
+        document.getElementById(
+            "readerImages"
+        );
+
+
+    reader.innerHTML = "";
+
+currentPageIndex = 0;
+
+    reader.style.transform =
+        "scale(1)";
+
+
+    reader.style.marginBottom =
+        "0";
+
+
+    applyReaderZoom();
+
+
+    if (
+        currentChapterType ===
+        "images"
+    ) {
+
+        for (
+            const imageData
+            of chapter.images
+        ) {
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+
+            img.src =
+                URL.createObjectURL(
+                    imageData.blob
+                );
+
+
+            img.alt = "";
+
+
+            reader.appendChild(
+                img
+            );
+
+        }
+
+    }
+
+    else if (
+        currentChapterType ===
+        "pdf"
+    ) {
+
+        await renderPDF(
+            chapter.pdf
+        );
+
+    }
+
+
+    await new Promise(
+        resolve =>
+            requestAnimationFrame(
+                () =>
+                    requestAnimationFrame(
+                        resolve
+                    )
+            )
+    );
+
+updateReadingMode();
+
+    if (
+        restorePosition &&
+        currentSeriesId !== null
+    ) {
+
+        const series =
+            await dbGet(
+                "series",
+                currentSeriesId
+            );
+
+
+        if (
+            series &&
+            series.lastChapterId ===
+            chapterId &&
+            typeof series.lastScroll ===
+            "number"
+        ) {
+
+            window.scrollTo(
+                0,
+                series.lastScroll
+            );
+
+        } else {
+
+            window.scrollTo(
+                0,
+                0
+            );
+
+        }
+
+    } else {
+
+        window.scrollTo(
+            0,
+            0
+        );
+
+    }
+
+};
+
+
+/* =========================================================
+   PDF RENDER
+========================================================= */
+
+async function renderPDF(
+    pdfBlob
+) {
+
+    const reader =
+        document.getElementById(
+            "readerImages"
+        );
+
+
+    if (!pdfBlob) {
+
+        reader.innerHTML = `
+
+            <div class="empty">
+
+                PDF not found.
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    const arrayBuffer =
+        await pdfBlob.arrayBuffer();
+
+
+    const loadingTask =
+        getDocument({
+            data: arrayBuffer
+        });
+
+
+    const pdf =
+        await loadingTask.promise;
+
+
+    const pdfContainer =
+        document.createElement(
+            "div"
+        );
+
+
+    pdfContainer.className =
+        "pdf-reader";
+
+
+    reader.appendChild(
+        pdfContainer
+    );
+
+
+    for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+    ) {
+
+        const page =
+            await pdf.getPage(
+                pageNumber
+            );
+
+
+        const baseViewport =
+            page.getViewport({
+                scale: 1
+            });
+
+
+        const maxWidth =
+            Math.min(
+                1000,
+                window.innerWidth
+            );
+
+
+        const scale =
+            maxWidth /
+            baseViewport.width;
+
+
+        const viewport =
+            page.getViewport({
+                scale:
+                    Math.max(
+                        scale,
+                        1
+                    )
+            });
+
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+
+        canvas.className =
+            "pdf-page";
+
+
+        canvas.width =
+            Math.floor(
+                viewport.width
+            );
+
+
+        canvas.height =
+            Math.floor(
+                viewport.height
+            );
+
+
+        pdfContainer.appendChild(
+            canvas
+        );
+
+
+        const context =
+            canvas.getContext(
+                "2d"
+            );
+
+
+        await page.render({
+
+            canvasContext:
+                context,
+
+            viewport:
+                viewport
+
+        }).promise;
+
+    }
+
+}
+
+
+/* =========================================================
+   SAVE READING POSITION
+========================================================= */
+
+let saveScrollTimer = null;
+
+
+window.addEventListener(
+    "scroll",
+    function() {
+
+        const reader =
+            document.getElementById(
+                "reader"
+            );
+
+
+        if (
+            reader.style.display !==
+            "block"
+        ) {
+
+            return;
+
+        }
+
+
+        const scrollTop =
+            window.scrollY;
+
+
+        const total =
+            document.documentElement
+                .scrollHeight -
+            window.innerHeight;
+
+
+        let percentage = 0;
+
+
+        if (total > 0) {
+
+            percentage =
+                (
+                    scrollTop /
+                    total
+                ) * 100;
+
+        }
+
+
+        document.getElementById(
+            "progressBar"
+        ).style.width =
+            percentage + "%";
+
+
+        clearTimeout(
+            saveScrollTimer
+        );
+
+
+        saveScrollTimer =
+            setTimeout(
+                async () => {
+
+                    if (
+                        currentSeriesId ===
+                        null
+                    )
+                        return;
+
+
+                    const series =
+                        await dbGet(
+                            "series",
+                            currentSeriesId
+                        );
+
+
+                    if (!series)
+                        return;
+
+
+                    series.lastScroll =
+                        scrollTop;
+
+
+                    series.lastChapterId =
+                        currentChapterId;
+                    series.chapterProgress = percentage;
+
+                    await dbPut(
+                        "series",
+                        series
+                    );
+
+                },
+                500
+            );
+
+    }
+);
+
+
+/* =========================================================
+   CLOSE READER
+========================================================= */
+
+window.closeReader =
+function() {
+
+    document.getElementById(
+        "reader"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "seriesPage"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "progressBar"
+    ).style.width =
+        "0%";
+};
+
+
+/* =========================================================
+   EDIT SERIES
+========================================================= */
+
+window.openEditSeriesModal =
+async function() {
+
+    const series =
+        await dbGet(
+            "series",
+            currentSeriesId
+        );
+
+    if (!series) {
+        alert("Story not found.");
+        return;
+    }
+
+    // Make sure the Edit modal is opened on top of the page
+    // instead of leaving the user on the reader/story screen.
+    const modal = document.getElementById("editSeriesModal");
+    modal.style.display = "flex";
+
+
+    document.getElementById(
+        "editTitle"
+    ).value =
+        series.title;
+
+
+    document.getElementById(
+        "editDescription"
+    ).value =
+        series.description || "";
+
+
+    selectedEditTags =
+        Array.isArray(
+            series.tags
+        )
+        ? [...series.tags]
+        : [];
+
+
+    renderSelectedTags(
+        "edit"
+    );
+    document.getElementById("editCollectionsInput").value = (Array.isArray(series.collections) ? series.collections : []).join(", ");
+    document.getElementById("editStatus").value = series.status || "Reading";
+
+    document
+        .getElementById(
+            "editSeriesModal"
+        )
+        .classList.add(
+            "active"
+        );
+
+};
+
+
+window.closeEditSeriesModal =
+function() {
+
+    const modal = document.getElementById("editSeriesModal");
+    modal.classList.remove("active");
+    modal.style.display = "none";
+
+};
+
+
+window.saveSeriesEdit =
+async function() {
+
+    const series =
+        await dbGet(
+            "series",
+            currentSeriesId
+        );
+
+
+    const title =
+        document.getElementById(
+            "editTitle"
+        ).value.trim();
+
+
+    const description =
+        document.getElementById(
+            "editDescription"
+        ).value.trim();
+
+
+    const cover =
+        document.getElementById(
+            "editCover"
+        ).files[0];
+
+
+    if (!title) {
+
+        alert(
+            "The title is required."
+        );
+
+        return;
+
+    }
+
+
+    series.title =
+        title;
+
+
+    series.description =
+        description;
+
+
+    series.tags =
+        [...selectedEditTags];
+    series.collections = document.getElementById("editCollectionsInput").value.split(",").map(x => x.trim()).filter(Boolean);
+    series.status = document.getElementById("editStatus").value;
+
+    if (cover) {
+
+        series.cover =
+            cover;
+
+    }
+
+
+    await dbPut(
+        "series",
+        series
+    );
+
+
+    closeEditSeriesModal();
+
+
+    await openSeries(
+        currentSeriesId
+    );
+
+};
+
+
+/* =========================================================
+   DELETE SERIES
+========================================================= */
+
+window.deleteCurrentSeries =
+async function() {
+
+    const confirmed =
+        confirm(
+            "Delete this story and ALL its chapters?"
+        );
+
+
+    if (!confirmed)
+        return;
+
+
+    const chapters =
+        await getChapters(
+            currentSeriesId
+        );
+
+
+    for (
+        const chapter of chapters
+    ) {
+
+        await dbDelete(
+            "chapters",
+            chapter.id
+        );
+
+    }
+
+
+    await dbDelete(
+        "series",
+        currentSeriesId
+    );
+
+
+    currentSeriesId =
+        null;
+
+
+    showHome();
+
+};
+
+
+/* =========================================================
+   EDIT CHAPTER
+========================================================= */
+
+let editingChapterId = null;
+
+window.editChapter =
+async function(chapterId) {
+
+    const chapter = await dbGet("chapters", chapterId);
+
+    if (!chapter) {
+        alert("Chapter not found.");
+        return;
+    }
+
+    editingChapterId = chapterId;
+
+    document.getElementById("editChapterTitle").value =
+        chapter.title || "";
+
+    document.getElementById("editChapterImages").value = "";
+    document.getElementById("editChapterPDF").value = "";
+    document.getElementById("editChapterStatus").innerHTML = "";
+
+    document.getElementById("editChapterModal")
+        .classList.add("active");
+};
+
+window.closeEditChapterModal =
+function() {
+
+    document.getElementById("editChapterModal")
+        .classList.remove("active");
+
+    editingChapterId = null;
+};
+
+window.saveChapterEdit =
+async function() {
+
+    if (editingChapterId === null)
+        return;
+
+    const chapter =
+        await dbGet("chapters", editingChapterId);
+
+    if (!chapter)
+        return;
+
+    const title =
+        document.getElementById("editChapterTitle")
+            .value.trim();
+
+    if (!title) {
+        alert("The chapter title is required.");
+        return;
+    }
+
+    chapter.title = title;
+
+    const imageInput =
+        document.getElementById("editChapterImages");
+
+    const pdfInput =
+        document.getElementById("editChapterPDF");
+
+    const newImages =
+        Array.from(imageInput.files);
+
+    const newPDF =
+        pdfInput.files[0] || null;
+
+    if (newImages.length > 0) {
+
+        const sortedFiles =
+            sortImages(newImages);
+
+        chapter.type = "images";
+        chapter.pdf = null;
+        chapter.images = sortedFiles.map(file => ({
+            name: file.name,
+            blob: file
+        }));
+
+    } else if (newPDF) {
+
+        chapter.type = "pdf";
+        chapter.pdf = newPDF;
+        chapter.images = [];
+
+    }
+
+    await dbPut("chapters", chapter);
+
+    closeEditChapterModal();
+
+    await renderChapters();
+    await renderLibrary(
+        document.getElementById("search").value
+    );
+};
+
+/* =========================================================
+   DELETE CHAPTER
+========================================================= */
+
+window.deleteChapter =
+async function(
+    chapterId
+) {
+
+    const confirmed =
+        confirm(
+            "Delete this chapter?"
+        );
+
+
+    if (!confirmed)
+        return;
+
+
+    await dbDelete(
+        "chapters",
+        chapterId
+    );
+
+
+    await renderChapters();
+
+};
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+window.searchSeries =
+function() {
+
+    const value =
+        document.getElementById(
+            "search"
+        ).value;
+
+
+    renderLibrary(
+        value
+    );
+
+};
+
+
+/* =========================================================
+   HOME
+========================================================= */
+
+window.showHome =
+function() {
+
+    document.getElementById(
+        "seriesPage"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "reader"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "home"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "mainHeader"
+    ).style.display =
+        "flex";
+
+
+    renderLibrary();
+
+};
+
+
+/* =========================================================
+   CLOSE MODALS OUTSIDE
+========================================================= */
+
+document.addEventListener("keydown", function(event) { const r=document.getElementById("reader"); if(!r||r.style.display!=="block")return; if(event.key==="ArrowLeft")previousPage(); if(event.key==="ArrowRight")nextPage(); });
+
+document.addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            event.target.classList
+                .contains("modal")
+        ) {
+
+            event.target
+                .classList
+                .remove("active");
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   INITIALIZATION
+========================================================= */
+
+async function init() {
+
+    try {
+
+        await openDatabase();
+        await updateCloudUI();
+        if (supabaseClient) {
+            supabaseClient.auth.onAuthStateChange(() => { setTimeout(updateCloudUI, 0); });
+        }
+
+        applyMosaic();
+
+        await renderLibrary();
+
+    } catch(error) {
+
+        console.error(
+            error
+        );
+
+
+        document.getElementById(
+            "library"
+        ).innerHTML = `
+
+            <div class="empty">
+
+                <h2>
+                    Storage error
+                </h2>
+
+                <br>
+
+                ${escapeHTML(
+                    error.message
+                )}
+
+            </div>
+
+        `;
+
+    }
+
+}
+
+
+init();
+
+</script>
+
+</body>
+</html>
