@@ -6064,9 +6064,39 @@ async function init() {
     try {
 
         await openDatabase();
-        await updateCloudUI();
+
+        // Restore the cloud library into this device's IndexedDB when a user
+        // is already signed in. This is what makes a fresh device/browser
+        // populate its local MYTOON library from Supabase.
         if (supabaseClient) {
-            supabaseClient.auth.onAuthStateChange(() => { setTimeout(updateCloudUI, 0); });
+            const user = await getCloudUser();
+            if (user) {
+                try {
+                    setCloudStatus("☁ Downloading cloud library…");
+                    await pullCloudToLocal(user.id);
+                } catch (cloudError) {
+                    console.warn("MYTOON cloud restore failed:", cloudError);
+                    setCloudStatus("☁ Cloud restore failed");
+                }
+            }
+
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                setTimeout(async () => {
+                    await updateCloudUI();
+                    if (event === "SIGNED_IN" && session?.user) {
+                        try {
+                            setCloudStatus("☁ Downloading cloud library…");
+                            await pullCloudToLocal(session.user.id);
+                            await renderLibrary(document.getElementById("search")?.value || "");
+                            setCloudStatus(`☁ ${session.user.email || "Cloud"}`, true);
+                        } catch (cloudError) {
+                            console.error("MYTOON cloud restore failed:", cloudError);
+                            setCloudStatus("☁ Cloud restore failed");
+                            alert("Cloud restore failed: " + (cloudError?.message || cloudError));
+                        }
+                    }
+                }, 0);
+            });
         }
 
         applyMosaic();
