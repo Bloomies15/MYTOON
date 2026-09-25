@@ -1420,6 +1420,7 @@ CLOUD SYNC
     <span id="cloudStatus">☁ Local only</span>
     <button id="cloudLoginButton" class="small-button" type="button" onclick="openCloudAuth()">Cloud login</button>
     <button id="cloudSyncButton" class="small-button" type="button" onclick="syncNow()" style="display:none">Sync</button>
+    <button id="cloudRestoreButton" class="small-button" type="button" onclick="restoreCloudNow()" style="display:none">Restore cloud</button>
     <button id="cloudLogoutButton" class="small-button" type="button" onclick="cloudLogout()" style="display:none">Logout</button>
 </div>
 
@@ -1935,11 +1936,13 @@ async function updateCloudUI() {
     const login = document.getElementById("cloudLoginButton");
     const sync = document.getElementById("cloudSyncButton");
     const logout = document.getElementById("cloudLogoutButton");
+    const restore = document.getElementById("cloudRestoreButton");
     if (!CLOUD_ENABLED || !supabaseClient) {
         setCloudStatus("☁ Local only");
         if (login) login.style.display = "inline-flex";
         if (sync) sync.style.display = "none";
         if (logout) logout.style.display = "none";
+        if (restore) restore.style.display = "none";
         return;
     }
     const user = await getCloudUser();
@@ -1948,11 +1951,13 @@ async function updateCloudUI() {
         if (login) login.style.display = "inline-flex";
         if (sync) sync.style.display = "none";
         if (logout) logout.style.display = "none";
+        if (restore) restore.style.display = "none";
     } else {
         setCloudStatus(`☁ ${user.email || "Cloud"}`, true);
         if (login) login.style.display = "none";
         if (sync) sync.style.display = "inline-flex";
         if (logout) logout.style.display = "inline-flex";
+        if (restore) restore.style.display = "inline-flex";
     }
 }
 
@@ -2019,22 +2024,45 @@ async function uploadCloudFile(userId, cloudId, kind, file, name) {
 async function downloadCloudFile(reference) {
     if (!reference) return null;
 
-    // Backward compatible with files uploaded by the earlier version.
+    // A normal Storage object path.
     if (typeof reference === "string") {
-        const { data, error } = await supabaseClient.storage.from(CLOUD_BUCKET).download(reference);
-        if (error) throw error;
-        return data;
+        const path = reference;
+        let result = await supabaseClient.storage.from(CLOUD_BUCKET).download(path);
+
+        // Fallback: try a signed URL if direct download fails.
+        if (result.error) {
+            const signed = await supabaseClient.storage
+                .from(CLOUD_BUCKET)
+                .createSignedUrl(path, 60);
+            if (!signed.error && signed.data?.signedUrl) {
+                const response = await fetch(signed.data.signedUrl);
+                if (response.ok) return await response.blob();
+            }
+            throw result.error;
+        }
+        return result.data;
     }
 
-    if (!reference.chunked || !Array.isArray(reference.parts)) return null;
-
-    const blobs = [];
-    for (let i = 0; i < reference.parts.length; i++) {
-        const { data, error } = await supabaseClient.storage.from(CLOUD_BUCKET).download(reference.parts[i]);
-        if (error) throw error;
-        blobs.push(data);
+    // Chunked PDF/file stored as { mime, parts, chunked }.
+    if (reference.chunked && Array.isArray(reference.parts)) {
+        const blobs = [];
+        for (let i = 0; i < reference.parts.length; i++) {
+            const partPath = reference.parts[i];
+            const blob = await downloadCloudFile(partPath);
+            if (!blob) throw new Error("Could not load file part " + (i + 1));
+            blobs.push(blob);
+        }
+        return new Blob(blobs, {
+            type: reference.mime || "application/octet-stream"
+        });
     }
-    return new Blob(blobs, { type: reference.mime || "application/octet-stream" });
+
+    // Also accept a file reference object containing a direct path.
+    if (typeof reference.path === "string") {
+        return downloadCloudFile(reference.path);
+    }
+
+    return null;
 }
 
 function seriesToCloudPayload(series) {
@@ -2111,6 +2139,24 @@ window.syncNow = async function syncNow() {
     }
 }
 
+window.restoreCloudNow = async function restoreCloudNow() {
+    if (!supabaseClient) return cloudError("Cloud is not configured.");
+    const user = await getCloudUser();
+    if (!user) return openCloudAuth();
+    if (cloudSyncRunning) return;
+    cloudSyncRunning = true;
+    try {
+        const result = await pullCloudToLocal(user.id);
+        await renderLibrary(document.getElementById("search")?.value || "");
+        alert(`MYTOON: restored ${result.restoredSeries} stories and ${result.restoredChapters} chapters from the cloud.`);
+    } catch (e) {
+        console.error("MYTOON manual cloud restore failed:", e);
+        alert("Cloud restore failed: " + (e?.message || e));
+    } finally {
+        cloudSyncRunning = false;
+    }
+};
+
 async function pushLocalToCloud(userId) {
     const seriesList = await dbGetAll("series");
     const chapters = await dbGetAll("chapters");
@@ -2144,55 +2190,146 @@ async function pushLocalToCloud(userId) {
 }
 
 async function pullCloudToLocal(userId) {
-    const { data: cloudSeries, error: se } = await supabaseClient.from("mytoon_series").select("*").eq("user_id", userId);
+    setCloudStatus("☁ Reading cloud library…");
+
+    const { data: cloudSeries, error: se } = await supabaseClient
+        .from("mytoon_series")
+        .select("id,user_id,data,updated_at")
+        .eq("user_id", userId);
     if (se) throw se;
-    const { data: cloudChapters, error: ce } = await supabaseClient.from("mytoon_chapters").select("*").eq("user_id", userId);
+
+    const { data: cloudChapters, error: ce } = await supabaseClient
+        .from("mytoon_chapters")
+        .select("id,user_id,series_id,data,updated_at")
+        .eq("user_id", userId);
     if (ce) throw ce;
 
+    // IMPORTANT:
+    // Do NOT download every PDF/image into IndexedDB during restore.
+    // Large libraries can exceed browser storage quota and make the restore
+    // stop part-way through. We restore only metadata + Storage paths here.
+    // Actual files are downloaded when the user opens a story/chapter.
     const localSeries = await dbGetAll("series");
     const localChapters = await dbGetAll("chapters");
-    const seriesByCloud = new Map(localSeries.filter(s => s.cloudId).map(s => [s.cloudId, s]));
-    const chapterByCloud = new Map(localChapters.filter(c => c.cloudId).map(c => [c.cloudId, c]));
+    const seriesByCloud = new Map(localSeries.filter(s => s && s.cloudId).map(s => [s.cloudId, s]));
+    const chapterByCloud = new Map(localChapters.filter(c => c && c.cloudId).map(c => [c.cloudId, c]));
 
-    for (const row of cloudSeries || []) {
-        const d = row.data || {};
+    let restoredSeries = 0;
+    let restoredChapters = 0;
+
+    // Always show the complete cloud library after a restore.
+    activeTagFilter = null;
+    activeCollectionFilter = null;
+
+    for (const row of (cloudSeries || [])) {
+        let d = row?.data || {};
+        if (typeof d === "string") {
+            try { d = JSON.parse(d); } catch { d = {}; }
+        }
+        if (!d || typeof d !== "object") d = {};
+
         let local = seriesByCloud.get(row.id);
         if (!local) {
-            const { id, ...newSeries } = d;
-            local = { ...newSeries, title: typeof d.title === "string" ? d.title : "", description: typeof d.description === "string" ? d.description : "", tags: Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [], collections: Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : [], status: typeof d.status === "string" ? d.status : "", favorite: !!d.favorite, cloudId: row.id, lastChapterCloudId: d.lastChapterCloudId || null, cover: null };
+            local = {
+                title: typeof d.title === "string" ? d.title : "Untitled",
+                description: typeof d.description === "string" ? d.description : "",
+                cover: null,
+                cloudCoverPath: typeof d.coverPath === "string" ? d.coverPath : null,
+                tags: Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [],
+                collections: Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : [],
+                status: typeof d.status === "string" ? d.status : "Reading",
+                favorite: !!d.favorite,
+                lastChapterId: null,
+                lastChapterCloudId: d.lastChapterCloudId || null,
+                lastScroll: Number(d.lastScroll || 0),
+                chapterProgress: Number(d.chapterProgress || 0),
+                order: Number.isFinite(Number(d.order)) ? Number(d.order) : restoredSeries,
+                createdAt: Number(d.createdAt || Date.now()),
+                cloudId: row.id
+            };
             local.id = await dbAdd("series", local);
             seriesByCloud.set(row.id, local);
         } else {
-            local.title = typeof d.title === "string" ? d.title : ""; local.description = typeof d.description === "string" ? d.description : ""; local.tags = Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [];
-            local.collections = Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : []; local.status = typeof d.status === "string" ? d.status : ""; local.favorite = !!d.favorite;
-            local.lastChapterId = d.lastChapterId; local.lastChapterCloudId = d.lastChapterCloudId || null; local.lastScroll = d.lastScroll; local.chapterProgress = d.chapterProgress; local.order = d.order;
+            local.title = typeof d.title === "string" ? d.title : (local.title || "Untitled");
+            local.description = typeof d.description === "string" ? d.description : "";
+            local.tags = Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [];
+            local.collections = Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : [];
+            local.status = typeof d.status === "string" ? d.status : "Reading";
+            local.favorite = !!d.favorite;
+            local.lastChapterCloudId = d.lastChapterCloudId || null;
+            local.lastScroll = Number(d.lastScroll || 0);
+            local.chapterProgress = Number(d.chapterProgress || 0);
+            local.order = Number.isFinite(Number(d.order)) ? Number(d.order) : restoredSeries;
+            local.createdAt = Number(d.createdAt || local.createdAt || Date.now());
+            local.cloudId = row.id;
+            local.cloudCoverPath = typeof d.coverPath === "string" ? d.coverPath : null;
+            // Keep an already-cached local cover if one exists.
             await dbPut("series", local);
         }
-        if (d.coverPath) {
-            try { local.cover = await downloadCloudFile(d.coverPath); await dbPut("series", local); } catch(e) { console.warn("Cover download failed", e); }
+
+        if (typeof d.coverPath === "string") {
+            local.cloudCoverPath = d.coverPath;
+            await dbPut("series", local);
         }
+
+        restoredSeries++;
     }
 
-    for (const row of cloudChapters || []) {
-        const d = row.data || {};
+    for (const row of (cloudChapters || [])) {
+        let d = row?.data || {};
+        if (typeof d === "string") {
+            try { d = JSON.parse(d); } catch { d = {}; }
+        }
+        if (!d || typeof d !== "object") d = {};
+
         const parent = seriesByCloud.get(row.series_id);
-        if (!parent) continue;
+        if (!parent) {
+            console.warn("Skipping cloud chapter because its parent story was not found:", row.id, row.series_id);
+            continue;
+        }
+
         let local = chapterByCloud.get(row.id);
-        if (!local) local = { cloudId: row.id, seriesId: parent.id, title: typeof d.title === "string" ? d.title : "", type: d.type, order: d.order, createdAt: d.createdAt, images: [], pdf: null };
-        local.seriesId = parent.id; local.title = d.title; local.type = d.type; local.order = d.order; local.createdAt = d.createdAt;
-        if (d.type === "pdf") {
-            const f = d.files?.[0];
-            if (f?.path) { try { local.pdf = await downloadCloudFile(f.path); local.images = []; } catch(e) { console.warn("PDF download failed", e); } }
+        if (!local) {
+            local = {
+                cloudId: row.id,
+                seriesId: parent.id,
+                title: typeof d.title === "string" ? d.title : "Untitled chapter",
+                type: d.type === "pdf" ? "pdf" : "images",
+                order: Number(d.order || 0),
+                createdAt: Number(d.createdAt || Date.now()),
+                images: [],
+                pdf: null,
+                cloudFileRefs: Array.isArray(d.files) ? d.files : []
+            };
         } else {
+            local.cloudId = row.id;
+            local.seriesId = parent.id;
+            local.title = typeof d.title === "string" ? d.title : (local.title || "Untitled chapter");
+            local.type = d.type === "pdf" ? "pdf" : "images";
+            local.order = Number(d.order || 0);
+            local.createdAt = Number(d.createdAt || local.createdAt || Date.now());
+            local.cloudFileRefs = Array.isArray(d.files) ? d.files : [];
+        }
+
+        // Preserve any already-downloaded local content. Otherwise keep it empty
+        // and let openChapter() fetch it on demand from Storage.
+        if (local.type === "pdf") {
+            if (!(local.pdf instanceof Blob)) local.pdf = null;
             local.images = [];
-            for (const f of (d.files || [])) {
-                try { local.images.push({ name: f.name, blob: await downloadCloudFile(f.path) }); } catch(e) { console.warn("Image download failed", e); }
-            }
+        } else {
+            if (!Array.isArray(local.images)) local.images = [];
             local.pdf = null;
         }
-        if (local.id == null) local.id = await dbAdd("chapters", local); else await dbPut("chapters", local);
+
+        if (local.id == null) local.id = await dbAdd("chapters", local);
+        else await dbPut("chapters", local);
         chapterByCloud.set(row.id, local);
+        restoredChapters++;
     }
+
+    await renderLibrary(document.getElementById("search")?.value || "");
+    setCloudStatus(`☁ Restored ${restoredSeries} stories / ${restoredChapters} chapters`, true);
+    return { restoredSeries, restoredChapters };
 }
 
 /* =========================================================
@@ -3101,7 +3238,7 @@ async function renderCollectionFilters() {
         const name = nameInput.trim();
 
         if (
-            name.toLowerCase() === "favorites"
+            String(name ?? "").toLowerCase() === "favorites"
         ) {
             alert(
                 "Favorites is a built-in collection and cannot be created manually."
@@ -3275,6 +3412,95 @@ async function renderTagFilters() {
    LIBRARY
 ========================================================= */
 
+async function ensureSeriesCover(series) {
+    if (!series || series.cover instanceof Blob || !series.cloudCoverPath || !supabaseClient) return series?.cover || null;
+    try {
+        const blob = await downloadCloudFile(series.cloudCoverPath);
+        if (blob) { series.cover = blob; await dbPut("series", series); return blob; }
+    } catch (e) { console.warn("Cover download failed for", series.title, e); }
+    return null;
+}
+
+async function ensureChapterContent(chapter) {
+    if (!chapter || !supabaseClient || !Array.isArray(chapter.cloudFileRefs) || chapter.cloudFileRefs.length === 0) {
+        return chapter;
+    }
+
+    if (chapter.type === "pdf") {
+        if (chapter.pdf instanceof Blob) return chapter;
+
+        const ref = chapter.cloudFileRefs[0]?.path ?? chapter.cloudFileRefs[0];
+        if (!ref) return chapter;
+
+        try {
+            chapter.pdf = await downloadCloudFile(ref);
+            if (chapter.pdf) await dbPut("chapters", chapter);
+        } catch (e) {
+            console.error("MYTOON: PDF download failed", chapter.title, e);
+            throw new Error("Impossible de charger le PDF « " + chapter.title + " » : " + (e?.message || e));
+        }
+    } else {
+        if (
+            Array.isArray(chapter.images) &&
+            chapter.images.length === chapter.cloudFileRefs.length &&
+            chapter.images.every(x => x?.blob instanceof Blob)
+        ) {
+            return chapter;
+        }
+
+        const images = [];
+        const errors = [];
+
+        // IMPORTANT: one missing/broken image must NOT erase the other images.
+        for (let i = 0; i < chapter.cloudFileRefs.length; i++) {
+            const ref = chapter.cloudFileRefs[i];
+            const path = ref?.path ?? (typeof ref === "string" ? ref : null);
+            if (!path) {
+                errors.push("image " + (i + 1) + ": chemin absent");
+                continue;
+            }
+
+            try {
+                const blob = await downloadCloudFile(path);
+                if (blob) {
+                    images.push({
+                        name: typeof ref?.name === "string" ? ref.name : "page-" + (i + 1),
+                        blob
+                    });
+                } else {
+                    errors.push(path);
+                }
+            } catch (e) {
+                console.warn("MYTOON: image download failed", path, e);
+                errors.push(path);
+            }
+        }
+
+        chapter.images = images;
+        await dbPut("chapters", chapter);
+
+        if (errors.length > 0) {
+            console.warn(
+                "MYTOON: chapter loaded partially",
+                chapter.title,
+                "loaded:", images.length,
+                "failed:", errors.length,
+                errors
+            );
+        }
+
+        if (images.length === 0) {
+            throw new Error(
+                "Aucune image n'a pu être chargée pour « " +
+                chapter.title +
+                " ». Les chemins sont présents dans le cloud, mais les fichiers ne sont pas accessibles."
+            );
+        }
+    }
+
+    return chapter;
+}
+
 async function renderLibrary(
     filter = ""
 ) {
@@ -3355,12 +3581,12 @@ async function renderLibrary(
                     activeTagFilter === null ||
                     tags.some(
                         tag =>
-                            tag.toLowerCase() ===
-                            activeTagFilter.toLowerCase()
+                            String(tag ?? "").toLowerCase() ===
+                            String(activeTagFilter ?? "").toLowerCase()
                     );
 
                 const collections = Array.isArray(series.collections) ? series.collections : [];
-                const collectionMatches = activeCollectionFilter === null || (activeCollectionFilter === "__favorites__" ? !!series.favorite : collections.some(c => c.toLowerCase() === activeCollectionFilter.toLowerCase()));
+                const collectionMatches = activeCollectionFilter === null || (activeCollectionFilter === "__favorites__" ? !!series.favorite : collections.some(c => String(c ?? "").toLowerCase() === String(activeCollectionFilter ?? "").toLowerCase()));
 
                 return (
                     titleMatches &&
@@ -3433,23 +3659,9 @@ async function renderLibrary(
         }
 
 
-        let coverURL;
-
-
-        if (series.cover) {
-
-            coverURL =
-                URL.createObjectURL(
-                    series.cover
-                );
-
-        } else {
-
-            coverURL =
-                placeholder();
-
-        }
-
+        let coverURL = series.cover instanceof Blob
+            ? URL.createObjectURL(series.cover)
+            : placeholder();
 
         const tags =
             Array.isArray(
@@ -3593,6 +3805,13 @@ async function renderLibrary(
         library.appendChild(
             card
         );
+
+        if (!(series.cover instanceof Blob) && series.cloudCoverPath) {
+            const coverImg = card.querySelector(".cover");
+            ensureSeriesCover(series).then(blob => {
+                if (blob && coverImg) coverImg.src = URL.createObjectURL(blob);
+            });
+        }
 
     }
 
@@ -3965,20 +4184,16 @@ async function openSeries(
         );
 
 
-    if (series.cover) {
-
-        cover.src =
-            URL.createObjectURL(
-                series.cover
-            );
-
+    if (series.cover instanceof Blob) {
+        cover.src = URL.createObjectURL(series.cover);
     } else {
-
-        cover.src =
-            placeholder();
-
+        cover.src = placeholder();
+        if (series.cloudCoverPath) {
+            ensureSeriesCover(series).then(blob => {
+                if (blob) cover.src = URL.createObjectURL(blob);
+            });
+        }
     }
-
 
     updateFavoriteButton(
         !!series.favorite
@@ -4061,7 +4276,7 @@ async function() {
 
     const favoriteIndex =
         favoriteCollections.findIndex(
-            c => c.toLowerCase() === "favorites"
+            c => String(c ?? "").toLowerCase() === "favorites"
         );
 
     if (series.favorite && favoriteIndex === -1) {
@@ -5206,6 +5421,25 @@ async function(
     }
 
 
+    if (Array.isArray(chapter.cloudFileRefs) && chapter.cloudFileRefs.length > 0) {
+        try {
+            setCloudStatus("☁ Loading chapter…");
+            await ensureChapterContent(chapter);
+            setCloudStatus("☁ Cloud ready", true);
+            if (chapter.type === "images" && Array.isArray(chapter.cloudFileRefs) &&
+                chapter.images.length < chapter.cloudFileRefs.length) {
+                setCloudStatus(
+                    `☁ ${chapter.images.length}/${chapter.cloudFileRefs.length} images chargées`,
+                    false
+                );
+            }
+        } catch (e) {
+            console.error("Cloud chapter download failed", e);
+            alert("Could not load this chapter from the cloud: " + (e?.message || e));
+            return;
+        }
+    }
+
     currentChapterId =
         chapterId;
 
@@ -5795,48 +6029,126 @@ async function() {
    DELETE SERIES
 ========================================================= */
 
+async function deleteCloudStorageReference(reference) {
+    if (!reference) return;
+
+    const paths = [];
+    if (typeof reference === "string") {
+        paths.push(reference);
+    } else if (reference && Array.isArray(reference.parts)) {
+        paths.push(...reference.parts.filter(Boolean));
+    }
+
+    if (!paths.length) return;
+
+    const { error } = await supabaseClient
+        .storage
+        .from(CLOUD_BUCKET)
+        .remove(paths);
+
+    if (error) throw error;
+}
+
+async function deleteCloudStory(series, chapters, userId) {
+    if (!supabaseClient || !userId || !series?.cloudId) return;
+
+    // Collect every Storage object belonging to this story before deleting
+    // the database rows that contain their paths.
+    const storageReferences = [];
+
+    if (series.cloudCoverPath) {
+        storageReferences.push(series.cloudCoverPath);
+    }
+
+    for (const chapter of chapters) {
+        if (!chapter?.cloudId) continue;
+
+        const { data, error } = await supabaseClient
+            .from("mytoon_chapters")
+            .select("id,series_id,data")
+            .eq("id", chapter.cloudId)
+            .eq("user_id", userId)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        let payload = data?.data || {};
+        if (typeof payload === "string") {
+            try { payload = JSON.parse(payload); } catch { payload = {}; }
+        }
+
+        for (const file of (Array.isArray(payload?.files) ? payload.files : [])) {
+            if (file?.path) storageReferences.push(file.path);
+        }
+    }
+
+    // Remove Storage objects first. A failure stops the operation instead of
+    // leaving database rows that point to missing files.
+    for (const reference of storageReferences) {
+        await deleteCloudStorageReference(reference);
+    }
+
+    // Delete all cloud chapters belonging to this story.
+    const { error: chapterDeleteError } = await supabaseClient
+        .from("mytoon_chapters")
+        .delete()
+        .eq("user_id", userId)
+        .eq("series_id", series.cloudId);
+
+    if (chapterDeleteError) throw chapterDeleteError;
+
+    // Finally delete the cloud series itself.
+    const { error: seriesDeleteError } = await supabaseClient
+        .from("mytoon_series")
+        .delete()
+        .eq("user_id", userId)
+        .eq("id", series.cloudId);
+
+    if (seriesDeleteError) throw seriesDeleteError;
+}
+
 window.deleteCurrentSeries =
 async function() {
 
     const confirmed =
         confirm(
-            "Delete this story and ALL its chapters?"
+            "Delete this story and ALL its chapters from this device AND the cloud?"
         );
 
+    if (!confirmed) return;
 
-    if (!confirmed)
+    const series = await dbGet("series", currentSeriesId);
+    if (!series) {
+        alert("Story not found.");
         return;
-
-
-    const chapters =
-        await getChapters(
-            currentSeriesId
-        );
-
-
-    for (
-        const chapter of chapters
-    ) {
-
-        await dbDelete(
-            "chapters",
-            chapter.id
-        );
-
     }
 
+    const chapters = await getChapters(currentSeriesId);
 
-    await dbDelete(
-        "series",
-        currentSeriesId
-    );
+    try {
+        // If the story is cloud-linked, remove it from Supabase first.
+        // This prevents the next cloud restore from bringing it back.
+        const user = await getCloudUser();
+        if (supabaseClient && user && series.cloudId) {
+            setCloudStatus("☁ Deleting story from cloud…");
+            await deleteCloudStory(series, chapters, user.id);
+        }
 
+        // Then remove the local records.
+        for (const chapter of chapters) {
+            await dbDelete("chapters", chapter.id);
+        }
 
-    currentSeriesId =
-        null;
+        await dbDelete("series", currentSeriesId);
 
+        currentSeriesId = null;
+        showHome();
+        setCloudStatus("☁ Story deleted", true);
 
-    showHome();
+    } catch (error) {
+        console.error("MYTOON delete failed:", error);
+        alert("The story could not be completely deleted. Nothing was removed locally.\n\n" + (error?.message || error));
+    }
 
 };
 
