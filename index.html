@@ -2159,12 +2159,12 @@ async function pullCloudToLocal(userId) {
         let local = seriesByCloud.get(row.id);
         if (!local) {
             const { id, ...newSeries } = d;
-            local = { ...newSeries, cloudId: row.id, lastChapterCloudId: d.lastChapterCloudId || null, cover: null };
+            local = { ...newSeries, title: typeof d.title === "string" ? d.title : "", description: typeof d.description === "string" ? d.description : "", tags: Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [], collections: Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : [], status: typeof d.status === "string" ? d.status : "", favorite: !!d.favorite, cloudId: row.id, lastChapterCloudId: d.lastChapterCloudId || null, cover: null };
             local.id = await dbAdd("series", local);
             seriesByCloud.set(row.id, local);
         } else {
-            local.title = d.title; local.description = d.description; local.tags = d.tags;
-            local.collections = d.collections; local.status = d.status; local.favorite = d.favorite;
+            local.title = typeof d.title === "string" ? d.title : ""; local.description = typeof d.description === "string" ? d.description : ""; local.tags = Array.isArray(d.tags) ? d.tags.filter(t => typeof t === "string") : [];
+            local.collections = Array.isArray(d.collections) ? d.collections.filter(c => typeof c === "string") : []; local.status = typeof d.status === "string" ? d.status : ""; local.favorite = !!d.favorite;
             local.lastChapterId = d.lastChapterId; local.lastChapterCloudId = d.lastChapterCloudId || null; local.lastScroll = d.lastScroll; local.chapterProgress = d.chapterProgress; local.order = d.order;
             await dbPut("series", local);
         }
@@ -2178,7 +2178,7 @@ async function pullCloudToLocal(userId) {
         const parent = seriesByCloud.get(row.series_id);
         if (!parent) continue;
         let local = chapterByCloud.get(row.id);
-        if (!local) local = { cloudId: row.id, seriesId: parent.id, title: d.title, type: d.type, order: d.order, createdAt: d.createdAt, images: [], pdf: null };
+        if (!local) local = { cloudId: row.id, seriesId: parent.id, title: typeof d.title === "string" ? d.title : "", type: d.type, order: d.order, createdAt: d.createdAt, images: [], pdf: null };
         local.seriesId = parent.id; local.title = d.title; local.type = d.type; local.order = d.order; local.createdAt = d.createdAt;
         if (d.type === "pdf") {
             const f = d.files?.[0];
@@ -3330,7 +3330,7 @@ async function renderLibrary(
 
 
     const searchValue =
-        filter.toLowerCase();
+        String(filter ?? "").toLowerCase();
 
 
     const filtered =
@@ -3338,7 +3338,7 @@ async function renderLibrary(
             series => {
 
                 const titleMatches =
-                    series.title
+                    String(series.title ?? "")
                         .toLowerCase()
                         .includes(
                             searchValue
